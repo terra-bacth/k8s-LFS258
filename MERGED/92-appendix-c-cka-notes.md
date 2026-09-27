@@ -5,6 +5,22 @@
 The `basic-k8s` text file containing your CKA labs was referenced but did not arrive in this workspace. Only the
 LFS258 repository was delivered. Rather than guess at its contents, this appendix is pre-formatted and ready.
 
+> **Good news, though.** While looking for a `lab.txt` file you asked about (there is none anywhere in the workspace),
+> a second, complete survey of the repository turned up **266 non-`.git` files instead of 255** — the first survey had
+> been silently truncated at 200 lines. The files it missed contained a great deal of CKA lab material, and all of it is
+> now merged:
+>
+> * `last-try/questions.sh` — **740 lines, 25 fully worked CKA exam questions** (now [Part VII](07-exam-drills-and-mock-exams.md))
+> * `mock-exam-1.sh`, `mock-exam-2.sh`, `mock-exam-3.sh` — three mock exams (Part VII §7.26–7.28)
+> * `last-try/scenarios-ingress.txt` and `last-try/senarisos-np.txt` — 10 scenario questions, worked (Part VII §7.29–7.30)
+> * `lightenin-labs/`, `practice-on-paper/`, `cluster-upgrade/`, `shells/`, `explore-services/`, `troubleshooting/`,
+>   `yaml/`, `configmap/` — upgrade sequences, external-etcd drills, real log captures and reference manifests
+> * `kubectl-quick-refrence.sh` and `jsaon-path-examples.sh` — consolidated as
+>   [Appendix D](93-appendix-d-kubectl-jsonpath-reference.md)
+>
+> So most of what `basic-k8s` would have contributed is already covered. If the file adds anything beyond that, this
+> appendix is where it goes.
+
 ---
 
 ## C.1 How to supply it
@@ -19,7 +35,7 @@ Any one of these works:
 Once it is here I will:
 
 * transcribe it into this appendix under a `## C.N <original heading>` structure, unchanged;
-* add a `**CKA domain:**` and `**Merged into:**` line under each lab so it cross-links to Parts I–VI;
+* add a `**CKA domain:**` and `**Merged into:**` line under each lab so it cross-links to Parts I–VII;
 * add any labs it contains that Parts I–VI do not already cover, as new numbered sections in the relevant Part;
 * update the [index](00-index.md) row for this appendix;
 * update [Appendix B](91-appendix-b-lfs258-cka-crosswalk.md) with the new file.
@@ -87,7 +103,9 @@ Mapping so nothing gets lost when the file arrives. If your notes touch any of t
 | Taints, tolerations, node affinity, pod affinity, topologyKey | Part II §2.11 |
 | Probes — liveness, readiness, startup | Part II §2.13 |
 | Node drain/cordon/uncordon, upgrades, cluster maintenance | Part I §1.12, §1.11 |
-| Troubleshooting — pod status, logs, `crictl`, control plane, network | Part VI §6.1–6.9 |
+| Troubleshooting — pod status, logs, `crictl`, control plane, network | Part VI §6.1–6.11 |
+| **Full worked exam questions, mock exams, Ingress/NetworkPolicy scenarios** | **Part VII §7.1–7.31** |
+| `kubectl` command reference, JSONPath | Appendix D |
 
 ---
 

@@ -1,6 +1,7 @@
 # Appendix B — LFS258 → CKA Crosswalk
 
-Every file in the repository mapped to the CKA domain and the section of this document that covers it. Use this to go
+Every file in the repository (all 266 non-`.git` files) mapped to the CKA domain and the section of this
+document that covers it. Use this to go
 from "I have a question about X in the repo" straight to "the merged document explains it here."
 
 ## B.1 Legend
@@ -13,6 +14,8 @@ from "I have a question about X in the repo" straight to "the merged document ex
 | **ST** | Storage | IV |
 | **SEC** | Security | V |
 | **TS** | Troubleshooting | VI |
+| **DR** | Exam drills / mock exams | VII |
+| **REF** | Reference / cheat sheet | App. D |
 
 ---
 
@@ -199,7 +202,190 @@ from "I have a question about X in the repo" straight to "the merged document ex
 
 ---
 
-## B.10 The five things your repo documents that most candidates get wrong
+## B.10 Root-level files added in the second pass
+
+The first survey of this repo was truncated at 200 files and silently dropped everything below. These are the root-level
+files that were missed.
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `mock-exam-1.sh` | DR/WS/SN | Mixed drill: pods, labels, NodePort, jsonpath output, static pods, pod editing | Part VII §7.26 |
+| `mock-exam-2.sh` | DR/SEC/ST | User certificates → CSR → RBAC; capabilities; PV/PVC; `set image`; DNS incl. reverse pod lookup; static pod on another node | Part VII §7.27 |
+| `mock-exam-3.sh` | DR/SEC/WS | ServiceAccount + ClusterRole; taints + tolerations; secrets; kubeconfig; the `kube-contro1ler-manager` typo | Part VII §7.28 |
+| `kubectl-quick-refrence.sh` | REF | Your own `kubectl` cheat sheet — config, create, get, rollout, patch, scale, logs, top, taint, api-resources, `--v` levels | Appendix D §D.2–D.10 |
+| `jsaon-path-examples.sh` | REF | JSONPath and `jpath` experiments; `.items[*]`, `[?(@.type=="InternalIP")]`, key escaping | Appendix D §D.11 |
+| `chatgpt-solutions.yaml` | SN | Two NetworkPolicy variants side by side | Part III §3.4 |
+| `core-dns-configmap.yaml` | SN | The full Corefile, verbatim | Part III §3.3 |
+| `my-ds.yaml` | WS | DaemonSet `ds-important` with a `nodeSelector` on control-plane | Part VII §7.11 |
+| `my-ingress-in-may.yaml` | SN | Ingress with `#TODO` comments and a NodePort Service | Part III §3.5 |
+| `my-steps-etcd-systemctl.sh` | CAIC/TS | **etcd as a systemd service** — backup, restore, `chown -R etcd:etcd`, plus network triage and a PV sort | Part I §1.10, Part VII §7.25 |
+| `my-volume-types.yaml` | ST | All five volume types in one file | Part IV §4.8 |
+| `np-temp.yaml` | SN | NetworkPolicy variants (ingress/egress, podSelector forms) | Part III §3.4 |
+| `temp.bash` | — | Scratch file | — |
+| `volumeMounts.yaml` | ST/WS | The `volumeMounts` + `volumes` pairing | Part IV §4.1 |
+| `secre-as-volatile-volumes` | SEC | Transcript: opaque Secret + secret-as-volume pod + the base64 note | Part V §5.6, Part VII §7.20 |
+
+---
+
+## B.11 `last-try/`
+
+The largest new find — 740 lines of fully worked CKA questions.
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `questions.sh` | **all domains** | 25 worked CKA exam questions, Q1–Q25 | Part VII §7.1–7.25 |
+| `scenarios-ingress.txt` | SN | 5 Ingress scenarios: HTTP/HTTPS exposure, host routing, path routing, SSL termination + redirect, canary | Part VII §7.29 |
+| `senarisos-np.txt` | SN | 5 NetworkPolicy scenarios: ns→ns port 8080, 80/443 + 5432 split, HTTPS-only + egress restriction, tenant isolation, external-API egress | Part VII §7.30 |
+| `gb-trouble-shooting.sh` | TS/SN | NodeNotReady (kubelet `inactive (dead)`), and the busybox-cannot-reach-`auth-db` cross-namespace FQDN drill | Part VI §6.1, Part VII §7.18–7.19 |
+| `liveness-probe.yaml` | WS | `exec` liveness probe doing the network check, `readinessProbe: exec: ["true"]` | Part VII §7.4 |
+| `luna-ingress.yaml` | SN | Host + path Ingress | Part III §3.5 |
+| `luna-ingress-hostless.yaml` | SN | Ingress with no `host` (matches any) | Part III §3.5 |
+| `luna-np.yaml` | SN | NetworkPolicy with `namespaceSelector` | Part III §3.4 |
+
+---
+
+## B.12 `lightenin-labs/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `lighteningexam.sh` | CAIC | Full v1.29 upgrade sequence, `custom-columns` deployment inventory to `/opt/admin2406_data`, kubeconfig at `/root/CKA/admin.kubeconfig`, `set image` 1.16→1.17, PVC debug for `alpha-mysql`, etcd snapshot, secret volume pod | Parts I §1.9, §1.12; VII §7.25 |
+| `pod.yaml` | ST | `pv-pod` in ns `auth` claiming `host-storage-pv` | Part IV §4.2 |
+| `pvc.yaml` | ST | `mysql-alpha-pvc`, StorageClass `slow` | Part IV §4.2 |
+| `pvc2.yaml` | ST | `host-storage-pvc`, StorageClass `expandable` | Part IV §4.5 |
+| `container-secret-volume.yaml` | SEC | Secret `secret-1401` mounted via `dotfile-secret` | Part V §5.6 |
+
+---
+
+## B.13 `practice-on-paper/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `practice-on-paper.sh` | CAIC/TS/WS | `kubectl top` with selector and `--sort-by`, taint grep, `logs -c proc > errors.txt`, **etcd-as-a-systemd-service** backup/restore, full v1.29 upgrade, `chown -R etcd:etcd` | Parts I §1.9–1.10; VII §7.7, §7.25 |
+| `PersistentVolume.yaml` | ST | hostPath `/etc/data`, class `expandable`, `Retain` | Part IV §4.2 |
+| `storage-class.yaml` | ST | `no-provisioner`, `WaitForFirstConsumer`, `allowVolumeExpansion: true` | Part IV §4.5 |
+
+---
+
+## B.14 `shells/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `control-plane.sh` | CAIC | 45 KB of live control-plane shell history | Part I |
+| `etcd-keys.sh` | CAIC | 46 KB dump of `/registry/...` etcd keys | Part I §1.9, Part VII §7.25 |
+| `bootstrap-kubeadm-control-plane.sh` | CAIC | The minimal kubeadm init flow | Part I §1.1 |
+| `cp-commands.sh` | CAIC | Calico install, kubeadm-config, `--upload-certs`, CA hash extraction | Parts I §1.1, §1.5 |
+| `worker-commands.sh` | CAIC | `kubeadm join` output | Part I §1.1 |
+| `etcd-explore.sh` | CAIC/TS | `etcdctl member list -w table`, snapshot save, restore to `/var/lib/etcd-from-backup`, the permission-denied gotcha | Part VII §7.25 |
+| `two-methods-snapshotting.md` | CAIC | In-pod vs on-node `etcdctl`, verbatim, with the trade-off discussion | Part VII §7.25 |
+| `KodeKloud.sh` | CAIC | Container-runtime prereqs + flannel v0.20.2 with `--iface=eth0`; `--apiserver-cert-extra-sans` | Parts I §1.1, §1.5 |
+| `cp.history.txt` | CAIC | Shell history from the control plane | Part I |
+
+---
+
+## B.15 `explore-services/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `cluster-ip.yaml`, `load-balancer.yaml`, `node-port.yaml` | SN | The three Service types, side by side | Part III §3.2 |
+| `services.log` | SN | All three types plus the default `kubernetes` Service, captured together | Part III §3.2 |
+| `multid/ingress.yaml` | SN | Ingress, path `/luna`, `Exact` | Part III §3.5 |
+| `multid/np.yaml` | SN | NetworkPolicy for the multi-container set | Part III §3.4 |
+| `multid/pod.yaml` | WS | The pod with the "no labels so it could not be exposed" note | Part III §3.2, Part VII §7.28 |
+| `multid/service.yaml` | SN | Service over the `multid` pods | Part III §3.2 |
+| `pods/0.pod.yaml` … `04.pod-with-command.yaml` | WS | Progressive pod variants, ending with an explicit `command` | Part II §2.6 |
+| `pods/cosmos-services.yaml` | SN | 8 Services for luna/lyra/nova/vega as ClusterIP + NodePort | Part III §3.2 |
+| `pods/luna-running.yaml`, `vega-running.yaml`, `vega.yaml` | WS | Pod specs at various states | Part II §2.1 |
+| `pods/multi-container-pod.yaml` | WS | Multi-container pod with `emptyDir` | Part II §2.4 |
+| `pods/sample-pod-commands.yaml` | WS | The `command`/`args` trap, verbatim | Part II §2.6 |
+| `pods/incremental.sh`, `my-commands.sh` | WS/SN | Exploratory command logs | Part II, Part III |
+
+---
+
+## B.16 `cluster-upgrade/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `cluster-upgrade.log` | CAIC | 27.6 KB of upgrade output | Part I §1.9 |
+| `history.sh` | CAIC | v1.29.3 upgrade: `drain --force --delete-emptydir-data`, `uncordon` **without** `sudo` | Part I §1.9 |
+
+---
+
+## B.17 `troubleshooting/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `application.log` | TS | Application error log | Part VI §6.2 |
+| `describe-node.log` | TS | A `NotReady` node description | Part VI §6.4 |
+| `events.log` | TS | Cluster event stream | Part VI §6.2 |
+| `ip-172-31-40-74.yaml` | CAIC | A control-plane node's spec | Part I |
+| `kube-api-server.log` | TS | 66 KB of apiserver output | Part VI §6.3 |
+| `networking.log` | SN/TS | Network troubleshooting capture | Part VI §6.5 |
+| `service.log` | SN/TS | Service troubleshooting capture | Part VI §6.5 |
+| `top.log` | TS | `kubectl top` output | Part VI §6.6 |
+| `app/mysql.yaml`, `app/pod.yaml` | TS/SN | Cross-namespace `mysql-service` / `DB_Host` — the DNS drill | Part VII §7.19 |
+
+---
+
+## B.18 `yaml/` and `configmap/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `yaml/nginx/{pod,deployment,replicaset,service}.yaml` | WS/SN | Minimal nginx reference manifests | Parts II §2.3, III §3.2 |
+| `yaml/nginx/ubuntu.yaml` | WS | A bare ubuntu pod | Part II §2.1 |
+| `yaml/nginx/ipconfig.txt` | SN | Network configuration capture | Part III §3.1 |
+| `yaml/redis/{pod,deployment,replicaset,service}.yaml` | WS/SN | Same set with `containerPort: 6379` | Parts II §2.3, III §3.2 |
+| `configmap/config-map.yaml` | ST | A full `nginx.conf` in a ConfigMap | Part IV §4.3 |
+| `configmap/pod.yaml` | ST | ConfigMap mounted as a volume | Part IV §4.3 |
+
+---
+
+## B.19 `my-certificate/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `farinaz-ghasemi-*-certificate.pdf` | — | A 720 KB CKA certificate PDF — binary, not mergeable | — |
+
+---
+
+## B.20 The ten things your repo documents that most candidates get wrong
+
+These all appear as explicit **[Your note]** comments in your own lab files. They are worth more than any checklist.
+
+1. **`kubectl edit pod` fails on spec changes** and writes `/tmp/kubectl-edit-*.yaml`. The fix is
+   `kubectl delete pod X --force` then `kubectl apply -f /tmp/kubectl-edit-*.yaml`.
+   (`16-config-map.sh`, `17-secretlab.sh`, `init-cotainer.sh`, `31-pv-pvc-definition.sh`)
+
+2. **A ReplicaSet's template edit does nothing to existing pods.** Only the count is reconciled.
+   (`02-replicasets.sh`)
+
+3. **Removing a taint does not take `key=` or the value.** `kubectl taint node X key:effect-`.
+   (`09-taint-tolerations.sh`)
+
+4. **A docker-registry Secret must be `type: kubernetes.io/dockerconfigjson` with a single base64
+   `.dockerconfigjson` key** — plain-text `Username`/`Password` keys are rejected.
+   (`28-imagesecret-pull.sh`, `17-secretlab.sh`)
+
+5. **PV and PVC access modes must match exactly** for automatic binding, and a `Retain` PV goes to `Released`, not
+   `Available`. (`31-pv-pvc-definition.sh`, `31-storage-class.yaml`)
+
+6. **`snapshot restore` only creates a new data directory** — nothing changes until you point etcd at it, by editing
+   `/etc/kubernetes/manifests/etcd.yaml` (stacked) or `systemctl stop etcd` + restore + `chown -R etcd:etcd`
+   (systemd). (`last-try/questions.sh` Q25, `practice-on-paper/practice-on-paper.sh`,
+   `my-steps-etcd-systemctl.sh`, `shells/etcd-explore.sh`)
+
+7. **`base64` wraps at 76 characters**, so a CSR `request` field needs `| tr -d "\n"` or `base64 -w 0` or you get an
+   interpretation error. (`mock-exam-2.sh`, `23-certificate-signing-request.sh`)
+
+8. **`kubectl set image` takes `<container-name>=<image>`**, and the container name is not the deployment name.
+   (`mock-exam-2.sh`)
+
+9. **`kubectl uncordon` must not be run with `sudo`** — it reads the kubeconfig from the invoking user's home.
+   (`cluster-upgrade/history.sh`)
+
+10. **A short Service name only resolves in the Service's own namespace.** From a pod in `web`, `auth-db` in `data`
+    needs `auth-db.data.svc.cluster.local` or `auth-db.data`.
+    (`last-try/gb-trouble-shooting.sh`, `mock-exam-2.sh`)
+
 
 These all appear as explicit **[Your note]** comments in your own lab files. They are worth more than any checklist.
 

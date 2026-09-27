@@ -7,6 +7,10 @@
 | `terra-bacth/k8s-LFS258` (this repo) | Every lab script, YAML manifest and personal annotation you wrote while working through **LFS258 – Kubernetes Fundamentals** |
 | CKA exam curriculum | The domain structure, concept explanations, exam-day patterns and gotchas that LFS258 does not cover |
 | `quay.io/pandeysp/*` registry | Your own container images, offered as alternatives in every lab so nothing depends on a public registry being reachable |
+| `last-try/questions.sh` (740 lines) | 25 fully worked CKA exam questions — the single most valuable file in the repo |
+| `mock-exam-1/2/3.sh`, `lightenin-labs/`, `practice-on-paper/`, `shells/`, `explore-services/`, `troubleshooting/`, `cluster-upgrade/`, `yaml/`, `configmap/` | Three mock exams, cluster-upgrade sequences, external-etcd drills, real troubleshooting logs, and reference manifest sets |
+| `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | Your own `kubectl` and JSONPath cheat sheets — consolidated into Appendix D |
+| `last-try/scenarios-ingress.txt`, `last-try/senarisos-np.txt` | 5 Ingress and 5 NetworkPolicy scenario questions — worked in Part VII §7.29–7.30 |
 
 **How to use it**
 
@@ -16,7 +20,21 @@
 3. Anything you wrote as a *personal annotation* (the `#` comments in the original scripts) is preserved verbatim and tagged
    **[Your note]** — those are your own hard-won gotchas, not filler.
 4. Appendix B is a full **LFS258 → CKA crosswalk** so you can trace any repo file back to an exam objective.
-5. Appendix C is a reserved slot for your `basic-k8s` CKA notes (see the note at the end of this index).
+5. **Part VII is the exam-drill part** — 25 full CKA questions with your answers and explanations, three mock exams, and
+   ten worked Ingress/NetworkPolicy scenarios. If you only read one part before sitting the exam, read that one.
+6. Appendix C is a reserved slot for your `basic-k8s` CKA notes (see the note at the end of this index).
+
+---
+
+> **One file or twelve — your choice.** This guide exists in two equivalent forms:
+>
+> * **`K8S-CKA-LFS258-MERGED.md`** — every part concatenated into **one single Markdown file** (10,900+ lines, ~400 KB),
+>   with `\pagebreak` separators between parts and all cross-references rewritten to internal anchors. This is the
+>   deliverable to read, search, print or hand to a friend.
+> * **`00-index.md` … `93-appendix-d-*.md`** — the same content split into twelve interlinked files, if you would rather
+>   keep them separate in an editor or a repo.
+>
+> Both are generated from the same source, so they never drift. The internal links work in both.
 
 ---
 
@@ -30,9 +48,11 @@
 | [Part IV](04-storage.md) | Storage | ~10% | 16, 31, VolumesAndData/* |
 | [Part V](05-security.md) | Security | ~20% | 17, 22, 23, 24, 25, 26, 27, 28, 29, Security/* |
 | [Part VI](06-troubleshooting.md) | Troubleshooting | ~10% | 15, 20, ApiAccess/*, Proxy/*, metric-server |
+| [Part VII](07-exam-drills-and-mock-exams.md) | **Exam drills** — 25 worked questions + 3 mock exams + 10 scenarios | all domains | `last-try/questions.sh`, `mock-exam-1/2/3.sh`, `scenarios-ingress.txt`, `senarisos-np.txt` |
 | [Appendix A](90-appendix-a-image-catalog.md) | Your `quay.io/pandeysp/*` image catalog | — | 33 images / 41 tags |
-| [Appendix B](91-appendix-b-lfs258-cka-crosswalk.md) | Repo file → exam objective mapping | — | 255 files |
+| [Appendix B](91-appendix-b-lfs258-cka-crosswalk.md) | Repo file → exam objective mapping | — | all 266 files |
 | [Appendix C](92-appendix-c-cka-notes.md) | Your `basic-k8s` CKA notes (reserved) | — | — |
+| [Appendix D](93-appendix-d-kubectl-jsonpath-reference.md) | `kubectl` + JSONPath quick reference | — | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` |
 
 ---
 
@@ -106,13 +126,35 @@ kubectl get all --show-labels
 
 ---
 
-## A note on your `basic-k8s` notes file
+## What changed in this build, and about `lab.txt`
 
-You mentioned an attached `basic-k8s` text file containing your CKA labs. The attachment did **not** arrive in this
-workspace — only the LFS258 repo is present here. To keep you unblocked, this document was built from:
+You asked whether there was a `lab.txt` file. There is no file by that name anywhere in the workspace
+(`find / -iname "lab.txt"` returns nothing). What there **is** — and what almost certainly satisfies the request — is
+`last-try/questions.sh`, a 740-line file of **25 fully worked CKA exam questions with your answers**. That file, plus
+three mock exams and ten scenario questions, is now merged as **Part VII**.
 
-* the complete contents of this repository (all 255 non-`.git` files), and
-* the current CKA curriculum structure.
+A second-pass survey also found material the first pass had missed, because the original `find | head -200` was silently
+truncated. All of it is now merged:
 
-**Appendix C is deliberately left as a reserved, pre-formatted slot.** Re-share the `basic-k8s` file (paste its text, or drop
-the file into the repo) and it will be folded in verbatim, with each lab cross-linked into the matching Part above.
+| Newly merged material | Where it landed |
+|---|---|
+| `last-try/questions.sh` — 25 worked exam questions | Part VII §7.1–7.25 |
+| `mock-exam-1.sh`, `mock-exam-2.sh`, `mock-exam-3.sh` | Part VII §7.26–7.28 |
+| `last-try/scenarios-ingress.txt` — 5 Ingress scenarios | Part VII §7.29 |
+| `last-try/senarisos-np.txt` — 5 NetworkPolicy scenarios | Part VII §7.30 |
+| `lightenin-labs/`, `practice-on-paper/`, `cluster-upgrade/history.sh` — v1.29 upgrade sequences | Part I §1.9 |
+| `shells/`, `my-steps-etcd-systemctl.sh` — etcd-as-a-systemd-service backup/restore | Part I §1.10, Part VII §7.25 |
+| `explore-services/` — ClusterIP / NodePort / LoadBalancer side by side | Part III §3.2 |
+| `yaml/nginx/`, `yaml/redis/`, `configmap/` — minimal reference manifests | Part II §2.3, Part IV §4.3 |
+| `troubleshooting/` — real control-plane and node logs | Part VI §6.3 |
+| `last-try/gb-trouble-shooting.sh` — NodeNotReady + cross-namespace DNS | Part VI §6.1, Part VII §7.18–7.19 |
+| `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | **Appendix D** |
+
+## About your `basic-k8s` notes file
+
+You mentioned an attached `basic-k8s` text file containing your CKA labs. That attachment has not arrived in this
+workspace either. Appendix C remains a reserved, pre-formatted slot for it: paste its text or drop the file into the repo
+and it will be folded in verbatim, with each lab cross-linked into the matching Part.
+
+Nothing in this document is fabricated to stand in for it — every lab, command, manifest, log line and `[Your note]` in
+these pages came out of your own repository.

@@ -833,6 +833,101 @@ export ETCD_INITIAL_CLUSTER_STATE=existing
 > and `snapshot restore` (creates a *new* data dir). Restoring never modifies the snapshot. And remember:
 > **stacked → edit `/etc/kubernetes/manifests/etcd.yaml`; external → edit `/etc/systemd/system/etcd.service`.**
 
+### 9e. etcd as a **systemd service** — `my-steps-etcd-systemctl.sh`, `practice-on-paper/practice-on-paper.sh`
+
+When etcd runs as a systemd unit rather than a static pod, there is no manifest to edit — you work with the unit, the data
+directory and the certificate paths in the unit file. Your two files capture the whole flow, and they include three
+operational gotchas that are not obvious from the docs.
+
+**Step 1 — find the endpoint and the certificates.** Do not guess; read them out of the unit.
+
+```bash
+systemctl cat etcd.service
+systemctl cat etcd.service | grep -i listen
+#   ExecStart=/usr/local/bin/etcd \
+#     --listen-client-urls https://10.0.1.101:2379 \
+#     --trusted-ca-file=/home/cloud_user/etcd-certs/ca.crt \
+#     --cert-file=/home/cloud_user/etcd-certs/server.crt \
+#     --key-file=/home/cloud_user/etcd-certs/server.key
+
+ls -l /home/cloud_user/etcd-certs
+```
+
+**[Your note]** — the ordering, verbatim:
+
+> *#find the listen url*
+> *#locate where the instructions tell you the keys*
+
+**Step 2 — take the snapshot.**
+
+```bash
+mkdir -p /home/cloud_user/
+
+etcdctl --endpoints=https://10.0.1.101:2379 \
+  --cacert=/home/cloud_user/etcd-certs/ca.crt \
+  --cert=/home/cloud_user/etcd-certs/server.crt \
+  --key=/home/cloud_user/etcd-certs/server.key \
+  snapshot save /home/cloud_user/etcd_backup.db
+
+ls -lrt /home/cloud_user/etcd_backup.db
+```
+
+**Step 3 — stop etcd, clear the data dir, restore.**
+
+```bash
+systemctl stop etcd
+
+sudo rm -rf /var/lib/etcd/
+
+sudo etcdctl --data-dir /var/lib/etcd snapshot restore /home/cloud_user/etcd_backup.db
+
+# this is very important
+chown -R etcd:etcd /var/lib/etcd
+
+systemctl restart etcd.service
+systemctl status etcd
+```
+
+**[Your note]** — the three gotchas, verbatim:
+
+> *you need to run it with sudo otherwise it does not allow you to mkdir /var/lib/etcd*
+>
+> *you need to stop `systemctl stop etcd` before removing `/var/lib/etcd`*
+
+Each one corresponds to a real failure mode:
+
+| Missing step | Symptom |
+|---|---|
+| No `sudo` on the restore | `mkdir /var/lib/etcd: permission denied` — the restore aborts partway and leaves a partial data dir |
+| No `systemctl stop etcd` first | etcd keeps its file handles open; the restored data is either overwritten or etcd refuses to start with `member ID changed` / `walpb` errors |
+| No `chown -R etcd:etcd` | etcd starts as user `etcd` but the restored files are owned by `root`, so it cannot read them: `permission denied` in `journalctl -u etcd` |
+
+**Step 4 — restart whatever reads etcd.** On a systemd-etcd cluster the control plane usually runs as static pods, so the
+kubelet restarts them automatically once etcd is healthy again. If they do not:
+
+```bash
+sudo systemctl restart kubelet
+sudo crictl ps -a | grep -E 'etcd|apiserver|scheduler|controller'
+```
+
+**Step 5 — the network triage you appended to the same file.** The `my-steps-etcd-systemctl.sh` capture also contains a
+generic network check that is useful on its own:
+
+```bash
+ip link show
+ip addr show
+ip route show
+ip neigh show
+cat /proc/sys/net/ipv4/ip_forward
+systemctl status kubelet
+systemctl status containerd
+systemctl status etcd
+```
+
+> **Exam note** — when etcd is a systemd service, the `snapshot restore` command does **not** need `--cacert/--cert/--key`
+> (it is a local file operation, no endpoint contacted), but it **does** need `--data-dir`. Passing the TLS flags anyway
+> is harmless. Getting the `--data-dir` wrong is the failure that costs the question.
+
 ---
 
 ## 1.10 Inspecting the control plane's TLS — Lab `22-certicates-dig.sh`
@@ -956,6 +1051,174 @@ kubectl uncordon <node>
 > **Exam note** — the ordering rules that get graded: **kubeadm before kubelet**, **control plane before workers**,
 > **one minor version at a time**, **drain before touching a worker**, and `kubeadm upgrade apply` only on the *first*
 > control plane (subsequent ones use `kubeadm upgrade node`).
+
+### 11a. The upgrade sequence you actually ran — `cluster-upgrade/history.sh`, `lighteningexam.sh`, `practice-on-paper.sh`
+
+Your three upgrade captures agree on the shape, and each adds a detail the others omit. Merged:
+
+```bash
+# ── 1. Snapshot the state first ────────────────────────────────────────────
+kubectl get nodes -o wide
+kubectl version --short
+sudo kubeadm upgrade plan
+
+# ── 2. Drain the control plane node ────────────────────────────────────────
+sudo kubectl drain controlplane --ignore-daemonsets
+# your capture shows the fuller form:
+kubectl drain <node> --force --delete-emptydir-data
+
+# ── 3. Upgrade kubeadm on the FIRST control plane ──────────────────────────
+sudo apt-mark unhold kubeadm
+sudo apt-get update
+sudo apt-get install -y kubeadm=1.29.3-1.1
+sudo apt-mark hold kubeadm
+
+sudo kubeadm upgrade apply v1.29.3
+
+# ── 4. Upgrade kubelet + kubectl on the SAME control plane ─────────────────
+sudo apt-mark unhold kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet=1.29.3-1.1 kubectl=1.29.3-1.1
+sudo apt-mark hold kubelet kubectl
+
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+# ── 5. Bring the control plane back ────────────────────────────────────────
+kubectl uncordon controlplane          # ← NO sudo. See the note below.
+
+# ── 6. Additional control plane nodes ──────────────────────────────────────
+sudo kubeadm upgrade node
+sudo systemctl restart kubelet
+
+# ── 7. Workers, ONE AT A TIME ──────────────────────────────────────────────
+kubectl drain node01 --ignore-daemonsets
+
+ssh node01
+sudo apt-mark unhold kubeadm
+sudo apt-get update
+sudo apt-get install -y kubeadm=1.29.3-1.1
+sudo apt-mark hold kubeadm
+sudo kubeadm upgrade node
+
+sudo apt-mark unhold kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet=1.29.3-1.1 kubectl=1.29.3-1.1
+sudo apt-mark hold kubelet kubectl
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+exit
+
+kubectl uncordon node01                # ← again, no sudo
+
+# ── 8. Verify ──────────────────────────────────────────────────────────────
+kubectl get nodes -o wide
+kubectl version --short
+```
+
+**[Your note]** — from `cluster-upgrade/history.sh`, and it is a genuine trap:
+
+> *`kubectl uncordon` must **not** be run with `sudo`*
+
+Why: `uncordon` reads the kubeconfig from `$HOME/.kube/config`. Under `sudo`, `$HOME` is `/root`, which has no kubeconfig
+— so the command fails with `The connection to the server localhost:8080 was refused`. Every `kubectl` command in an
+upgrade is run **without** `sudo`; only the package installs, `systemctl` and `kubeadm upgrade apply/node` need it.
+
+**[Your note]** — from the same file, the two drain flags that were needed:
+
+> *`kubectl drain <node> --force --delete-emptydir-data`*
+
+| Flag | Why it was needed |
+|---|---|
+| `--force` | A bare pod with no controller was running — `drain` refuses to evict it, because the pod would be lost forever |
+| `--delete-emptydir-data` | A pod using an `emptyDir` volume was running — `drain` refuses, because the data would be lost |
+
+**The deployment-inventory step** from `lighteningexam.sh`, which is a *separate* exam question in its own right:
+
+```bash
+# Write a deployment inventory (name + replicas) to a file
+kubectl get deployments -A \
+  -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,REPLICAS:.spec.replicas \
+  > /opt/admin2406_data/deployments.txt
+
+# Or with a label selector, if the question names one
+kubectl get deployments -A -l tier=backend -o custom-columns=NAME:.metadata.name,REPLICAS:.spec.replicas
+```
+
+**The kubeconfig step** from the same file — a very common CKA sub-task:
+
+```bash
+kubectl config set-cluster cka \
+  --certificate-authority=/etc/kubernetes/pki/ca.crt \
+  --embed-certs=true \
+  --server=https://172.30.1.2:6443 \
+  --kubeconfig=/root/CKA/admin.kubeconfig
+
+kubectl config set-credentials admin \
+  --client-certificate=/etc/kubernetes/pki/admin.crt \
+  --client-key=/etc/kubernetes/pki/admin.key \
+  --embed-certs=true \
+  --kubeconfig=/root/CKA/admin.kubeconfig
+
+kubectl config set-context admin@cka \
+  --cluster=cka --user=admin \
+  --kubeconfig=/root/CKA/admin.kubeconfig
+
+kubectl config use-context admin@cka --kubeconfig=/root/CKA/admin.kubeconfig
+kubectl get nodes --kubeconfig=/root/CKA/admin.kubeconfig
+```
+
+Note the `--kubeconfig=` flag on **every** command — without it, `kubectl config set-*` writes to `~/.kube/config` and
+your new file stays empty. That is the single most common mistake in this task.
+
+**The `set image` step** from the same file — the same container-name gotcha as `mock-exam-2.sh`:
+
+```bash
+kubectl set image deployment/nginx-deploy nginx=nginx:1.17
+#                                     ^^^^^ the CONTAINER name, not the deployment name
+```
+
+**The PVC debug step** — a troubleshooting pattern worth knowing:
+
+```bash
+kubectl get pvc alpha-mysql -n <ns>
+kubectl describe pvc alpha-mysql -n <ns>
+# Events: ... waiting for first consumer to be created before binding
+# → the StorageClass is WaitForFirstConsumer; the pod must exist first
+kubectl get sc slow -o yaml | grep volumeBindingMode
+```
+
+> **Exam note** — a PVC stuck `Pending` with the event `waiting for first consumer` is not broken. Create the pod that
+> references it, and the binding happens immediately. This is covered in Part IV §4.5.
+
+### 11b. `kubeadm token` and the CA hash for adding nodes
+
+From `shells/cp-commands.sh` and `shells/worker-commands.sh`:
+
+```bash
+# On the control plane
+kubeadm token list
+kubeadm token create --print-join-command
+kubeadm token create --ttl 24h --print-join-command
+
+# Or build the join command by hand
+openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt \
+  | openssl rsa -pubin -outform der 2>/dev/null \
+  | openssl dgst -sha256 -hex | sed 's/^.* //'
+# 7d3f...c9e1
+
+kubeadm join 172.30.1.2:6443 \
+  --token abcdef.0123456789abcdef \
+  --discovery-token-ca-cert-hash sha256:7d3f...c9e1
+
+# With --upload-certs (for additional control planes)
+kubeadm init --control-plane-endpoint "172.30.1.2:6443" --upload-certs
+kubeadm join ... --control-plane --certificate-key <key>
+```
+
+> **Exam note** — the CA hash one-liner is worth memorising verbatim. It is asked for directly, and there is no way to
+> derive it from memory. The `2>/dev/null` matters: on newer OpenSSL, `openssl rsa -pubin` prints a deprecation warning
+> to stderr that otherwise pollutes the output.
 
 ---
 

@@ -282,6 +282,92 @@ spec:
 Headless services (`clusterIP: None`) return the **pod IPs** in their A records instead of a single virtual IP — that is
 what a StatefulSet needs for `web-0.web`, `web-1.web`.
 
+### The three external types, side by side — `explore-services/services.log`
+
+Your capture puts all three next to each other, which makes the differences visible in one screen:
+
+```
+NAME                      TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE     SELECTOR
+andromeda-cluster-ip      ClusterIP      10.106.99.246   <none>        80/TCP         8m50s   run=andromeda
+andromeda-load-balancer   LoadBalancer   10.98.78.195    <pending>     80:32064/TCP   3m11s   run=andromeda
+andromeda-node-port       NodePort       10.96.162.69    <none>        80:31241/TCP   6m45s   run=andromeda
+kubernetes                ClusterIP      10.96.0.1       <none>        443/TCP        30d     <none>
+nginx-deployment          NodePort       10.99.201.242   <none>        80:30503/TCP   27d     app=nginx-deployment
+```
+
+Read the `PORT(S)` column carefully — it encodes the type:
+
+| `PORT(S)` value | Type | How to read it |
+|---|---|---|
+| `80/TCP` | ClusterIP | one port, no external exposure |
+| `80:31241/TCP` | NodePort | `servicePort:nodePort` — the first number is the in-cluster port, the second is the port opened on **every node** |
+| `80:32064/TCP` with `EXTERNAL-IP <pending>` | LoadBalancer | `servicePort:nodePort` — a NodePort underneath, plus a cloud LB that never materialises on bare metal |
+
+Two details in that table worth noting:
+
+1. **All three selectors are `run=andromeda`** — the same three pods are reachable three different ways simultaneously.
+   That is the cleanest demonstration that the Service *type* only changes how traffic arrives, never which pods it
+   reaches.
+2. **`kubernetes` has `SELECTOR <none>`.** The default Service is not selector-driven; its Endpoints object is created and
+   maintained by the apiserver itself. You cannot recreate it, and you should not try.
+
+```bash
+# Reproduce the side-by-side
+kubectl expose deployment andromeda --name=andromeda-cluster-ip --port=80
+kubectl expose deployment andromeda --name=andromeda-node-port --type=NodePort --port=80
+kubectl expose deployment andromeda --name=andromeda-load-balancer --type=LoadBalancer --port=80
+kubectl get svc
+```
+
+**The manifests**, from `explore-services/`:
+
+```yaml
+# explore-services/cluster-ip.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: andromeda-cluster-ip
+spec:
+  type: ClusterIP
+  selector:
+    run: andromeda
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# explore-services/node-port.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: andromeda-node-port
+spec:
+  type: NodePort
+  selector:
+    run: andromeda
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 31241          # pin it, or the kernel picks a random 30000-32767 port
+---
+# explore-services/load-balancer.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: andromeda-load-balancer
+spec:
+  type: LoadBalancer
+  selector:
+    run: andromeda
+  ports:
+    - port: 80
+      targetPort: 80
+```
+
+> **Exam note** — `EXTERNAL-IP <pending>` on a bare-metal cluster is **normal**, not broken. A LoadBalancer Service only
+> ever becomes reachable if a controller (MetalLB, or a cloud provider's CCM) is installed. If the exam asks you to
+> "expose the app externally" on a bare-metal cluster, the answer is almost always **NodePort** or **Ingress**, not
+> LoadBalancer.
+
 ### `externalTrafficPolicy`
 
 | Value | Behaviour |
@@ -304,6 +390,77 @@ spec:
 > **Exam note** — "Service has no endpoints" is the #1 networking failure. Diagnose with
 > `kubectl get endpoints <svc>`, `kubectl describe svc <svc>` (compare `Selector`), and
 > `kubectl get pods --show-labels` (compare the pod's labels). A typo in either label is the answer 90% of the time.
+
+---
+
+### The CoreDNS Corefile, verbatim — `core-dns-configmap.yaml`
+
+This is the whole of DNS in a kubeadm cluster, and reading it once answers half the DNS questions on the exam.
+
+```yaml
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+```
+
+Line by line, the parts that matter:
+
+| Plugin / directive | What it does | Why you care |
+|---|---|---|
+| `.:53` | Listen on port 53 for **all** zones | The port the kubelet puts in `/etc/resolv.conf` |
+| `errors` | Log errors to stdout | Where DNS failures show up in `kubectl -n kube-system logs -l k8s-app=kube-dns` |
+| `ready` | Report readiness on :8181 | The readiness probe port |
+| `kubernetes cluster.local in-addr.arpa ip6.arpa` | Serve records for the cluster domain **and** both reverse zones | The `cluster.local` here is the `--cluster-domain` |
+| `pods insecure` | Answer A records for pod IPs | Enables `10-244-192-4.default.pod.cluster.local` — the reverse-lookup form from `mock-exam-2.sh` |
+| `fallthrough in-addr.arpa ip6.arpa` | Pass unresolved reverse lookups to the next plugin | Without it, `nslookup 10.244.192.4` for a non-cluster IP fails |
+| `ttl 30` | Cache records for 30 s | Why a stale Service IP can linger for half a minute |
+| `forward . /etc/resolv.conf` | Everything else goes to the node's upstream resolver | This is how pods reach the internet |
+| `prometheus :9153` | Expose metrics on 9153 | The CoreDNS monitoring port |
+| `cache 30` | Cache for 30 s | Combined with `ttl 30` |
+| `loop` | Detect and break forwarding loops | If you see `plugin/loop: Could not find a "Corefile"` the loop guard fired |
+| `reload` | Reload the Corefile every 30 s | **You can edit this ConfigMap and the change takes effect within 30 s with no restart** |
+| `loadbalance` | Randomise the order of A records | Why a headless Service's DNS answer order changes between queries |
+
+```bash
+# Inspect and edit live
+kubectl -n kube-system get configmap coredns -o yaml
+kubectl -n kube-system edit configmap coredns
+
+# The common exam edit: change the cluster domain or add a stubDomain
+kubectl -n kube-system get configmap coredns -o yaml | grep -A2 'stubDomains'
+
+# Verify after a change (give it up to 30s)
+kubectl -n kube-system rollout restart deployment coredns     # force it immediately
+kubectl -n kube-system logs -l k8s-app=kube-dns --tail=20
+```
+
+> **Exam note** — three CoreDNS questions appear regularly: (1) the Corefile lives in ConfigMap `coredns` in
+> `kube-system`; (2) the Service it fronts is `kube-dns` at `10.96.0.10` by default; (3) `pods insecure` is the line
+> that makes pod-IP reverse lookups work. All three are visible in the block above.
 
 ---
 

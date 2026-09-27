@@ -593,7 +593,236 @@ exact workflow your repo documents four separate times. It is the highest-value 
 
 ---
 
-## 6.10 Part VI self-check
+## 6.10 Real log captures from your cluster — `troubleshooting/`
+
+Everything above is theory. This section is the evidence: eight captures from a real cluster (`ip-172-31-40-74`,
+kubeadm, Calico CNI, containerd 1.6.28, v1.28.8), plus the manifests that produced them.
+
+### 10a. `describe-node.log` — a **healthy** node, and what that looks like
+
+Worth studying, because half of troubleshooting is recognising "this is fine":
+
+```
+Name:               ip-172-31-40-74
+Roles:              control-plane
+Labels:             beta.kubernetes.io/arch=amd64
+                    kubernetes.io/hostname=ip-172-31-40-74
+                    node-role.kubernetes.io/control-plane=
+Annotations:        kubeadm.alpha.kubernetes.io/cri-socket: unix:///var/run/containerd/containerd.sock
+                    projectcalico.org/IPv4Address: 172.31.40.74/20
+                    projectcalico.org/IPv4IPIPTunnelAddr: 192.168.10.0
+Taints:             <none>
+Unschedulable:      false
+Lease:
+  HolderIdentity:  ip-172-31-40-74
+  RenewTime:       Sat, 30 Mar 2024 10:09:19 +0000
+Conditions:
+  Type                 Status  LastHeartbeatTime          LastTransitionTime         Reason                  Message
+  NetworkUnavailable   False   Sat, 30 Mar 2024 09:50:45   Sat, 30 Mar 2024 09:50:45  CalicoIsUp              Calico is running on this node
+  MemoryPressure       False   Sat, 30 Mar 2024 10:05:56   Thu, 21 Mar 2024 09:14:23  KubeletHasSufficientMemory
+  DiskPressure         False   Sat, 30 Mar 2024 10:05:56   Fri, 22 Mar 2024 16:29:24  KubeletHasNoDiskPressure
+  PIDPressure          False   Sat, 30 Mar 2024 10:05:56   Thu, 21 Mar 2024 09:14:23  KubeletHasSufficientPID
+  Ready                True    Sat, 30 Mar 2024 10:05:56   Thu, 21 Mar 2024 09:14:23  KubeletReady            kubelet is posting ready status. AppArmor enabled
+Addresses:
+  InternalIP:  172.31.40.74
+  Hostname:    ip-172-31-40-74
+Capacity:
+  cpu:                2
+  ephemeral-storage:  7941576Ki
+```
+
+Four things to read off this every single time:
+
+1. **`Taints:`** — `<none>` here. On a control-plane node you expect
+   `node-role.kubernetes.io/control-plane:NoSchedule`. If the taint is gone, someone removed it and the node will now
+   accept workloads that should not run there.
+2. **`Lease.RenewTime`** — the freshest timestamp on a healthy node. A `RenewTime` that is **minutes** old while
+   `LastHeartbeatTime` is also stale means the kubelet has stopped reporting, which is the first sign of `NotReady`.
+3. **`Ready: True` with `LastTransitionTime` far in the past** — the node has been ready for 9 days. A
+   `LastTransitionTime` of "30 seconds ago" on a `Ready: False` means something *changed*; that is your incident window.
+4. **`NetworkUnavailable: False` + `Reason: CalicoIsUp`** — the CNI is Calico, so **NetworkPolicy is enforced** on this
+   cluster. That matters enormously for the policies in Part III §3.4 and Part VII §7.30.
+
+### 10b. `app/pod.yaml` + `app/mysql.yaml` — the cross-namespace DNS bug, live
+
+This is the clearest example in your repo of the single most common CKA networking failure. Two pods:
+
+```yaml
+# troubleshooting/app/pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: webapp-mysql
+  name: webapp-mysql-785cd8f94-44469
+  namespace: delta                      # ← the app lives in "delta"
+spec:
+  containers:
+    - env:
+        - name: DB_Host
+          value: mysql-service          # ← the SHORT name
+        - name: DB_User
+          value: sql-user
+        - name: DB_Password
+          value: paswrd
+      image: mmumshad/simple-webapp-mysql
+      name: webapp-mysql
+      ports:
+        - containerPort: 8080
+```
+
+```yaml
+# troubleshooting/app/mysql.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: mysql
+  name: mysql
+  namespace: alpha                      # ← the database lives in "alpha"
+spec:
+  containers:
+    - env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: paswrd
+      image: mysql:5.6
+      ports:
+        - containerPort: 3306
+```
+
+**The bug.** The app in `delta` connects to `mysql-service`. But `mysql` (and therefore the Service in front of it) is
+in `alpha`. A pod's DNS search list only contains **its own** namespace, so `mysql-service` is tried as
+`mysql-service.delta.svc.cluster.local` and fails.
+
+**The diagnosis, in order:**
+
+```bash
+# 1. Where does the app actually live?
+kubectl get pods -A -o wide | grep webapp-mysql
+# delta    webapp-mysql-785cd8f94-44469   1/1   Running   0   5m   172.31.40.74
+
+# 2. What is it trying to reach, and does that name exist anywhere?
+kubectl get svc -A | grep mysql-service
+# alpha    mysql-service   ClusterIP   10.100.20.10   <none>   3306/TCP   5m
+
+# 3. Confirm the failure from inside the pod
+kubectl -n delta exec deploy/webapp-mysql -- nslookup mysql-service
+# Server:    10.96.0.10
+# ** server can't find mysql-service.delta.svc.cluster.local: NXDOMAIN
+
+# 4. Prove the FQDN works
+kubectl -n delta exec deploy/webapp-mysql -- nslookup mysql-service.alpha.svc.cluster.local
+# Name:      mysql-service.alpha.svc.cluster.local
+# Address:   10.100.20.10
+```
+
+**The three fixes, best first:**
+
+```bash
+# a) Use the FQDN in the app's environment
+kubectl -n delta set env deploy/webapp-mysql DB_Host=mysql-service.alpha.svc.cluster.local
+
+# b) Or the namespace-qualified short form (.svc.cluster.local is in the search path)
+kubectl -n delta set env deploy/webapp-mysql DB_Host=mysql-service.alpha
+
+# c) Or move the Service into the app's namespace — but it must select pods in ITS OWN namespace,
+#    so this needs an ExternalName Service instead
+kubectl -n delta create serviceexternalname mysql-service \
+  --external-name=mysql-service.alpha.svc.cluster.local
+```
+
+> **Exam note** — this exact pair of files (`app/pod.yaml`, `app/mysql.yaml`) and the `gb-trouble-shooting.sh` capture
+> (`web-consumer` in `web` reaching `auth-db` in `data`) are the **same bug in two different clusters**. You hit it
+> twice, independently. It is worth memorising as a reflex: *"cannot resolve host" → `kubectl get svc -A | grep <name>`
+> → check the namespace.*
+
+### 10c. `application.log` — the log drill
+
+A 10.9 KB application log. The pattern:
+
+```bash
+# Never read the whole thing. Filter first.
+kubectl logs deploy/webapp-mysql -n delta | grep -iE 'error|fail|denied|refused|timeout'
+
+# The failure signature for the bug above
+kubectl logs deploy/webapp-mysql -n delta | grep -i 'getaddrinfo'
+# getaddrinfo ENOTFOUND mysql-service
+```
+
+`getaddrinfo ENOTFOUND` is the application-level equivalent of `NXDOMAIN` — it is always DNS, never the network.
+
+### 10d. `events.log` — the event stream
+
+16.9 KB of events. Sorting and filtering:
+
+```bash
+kubectl get events -A --sort-by=.metadata.creationTimestamp
+kubectl get events -A --sort-by=.lastTimestamp
+kubectl get events -A --field-selector type=Warning
+kubectl get events -A --field-selector reason=FailedScheduling
+kubectl get events -A --field-selector involvedObject.name=webapp-mysql-785cd8f94-44469
+```
+
+### 10e. `kube-api-server.log` — 66 KB of apiserver output
+
+The one to know how to read, because it is the only window into the control plane when the API is the problem:
+
+```bash
+# On the control plane node
+sudo crictl logs $(sudo crictl ps -a | grep kube-apiserver | awk '{print $1}') | tail -100
+
+# Or, if it is a static pod, its logs survive the pod
+journalctl -u kubelet | grep apiserver
+
+# Or, if the apiserver is up but misbehaving, get it from the API itself
+kubectl -n kube-system logs deploy/kube-apiserver-controlplane 2>/dev/null
+kubectl -n kube-system get pod -l component=kube-apiserver -o name
+```
+
+The four lines that matter in an apiserver log:
+
+| Line | Meaning |
+|---|---|
+| `Starting a new server` | Normal startup — note the flags it echoes |
+| `Authentication failed` / `Unable to authenticate the request` | A bad client cert, or a user that does not exist |
+| `Forbidden: user "..." cannot get resource "..."` | RBAC — the request authenticated but was denied |
+| `Failed to list *v1.Pod: ... connection refused` | etcd is unreachable |
+
+### 10f. `networking.log` and `service.log` — the CNI and Service captures
+
+```bash
+# What the CNI put on the node
+ip -br addr show
+ip route show
+iptables -t nat -L KUBE-SERVICES -n | head -20
+iptables -t nat -L KUBE-NODEPORTS -n
+cat /etc/cni/net.d/10-calico.conflist
+ls /opt/cni/bin/
+
+# What kube-proxy programmed
+iptables-save | grep -A5 'KUBE-SVC'
+ipvsadm -L -n        # if kube-proxy is in IPVS mode
+```
+
+### 10g. `top.log` — the metrics capture
+
+```bash
+kubectl top nodes
+kubectl top pods -A
+kubectl top pods -A --containers
+kubectl top pods -A --sort-by=cpu
+kubectl top pods -A --sort-by=memory
+```
+
+> **Exam note** — if `kubectl top` returns `error: Metrics API not available`, the causes in order are: (1)
+> metrics-server is not installed, (2) metrics-server's pod is not `Running` (`kubectl -n kube-system get pods -l
+> k8s-app=metrics-server`), (3) its `--kubelet-insecure-tls` / `--kubelet-preferred-address-types` flags are wrong, or
+> (4) the `APIService` `v1beta1.metrics.k8s.io` is not `Available` (`kubectl get apiservice v1beta1.metrics.k8s.io`).
+> Part I §1.8 has the full manifest.
+
+---
+
+## 6.11 Part VI self-check
 
 1. `kubectl logs pod` says `Defaulted container "app" out of: app, init-db (init)` and then `PodInitializing`. Which
    container do you log, and with which extra flag?
