@@ -464,6 +464,207 @@ kubectl -n kube-system logs -l k8s-app=kube-dns --tail=20
 
 ---
 
+### 2a. MetalLB — making `LoadBalancer` actually work on bare metal
+
+Everything in §3.2 assumed a cloud provider. On a bare-metal or VM cluster a `LoadBalancer` Service sits at
+`EXTERNAL-IP <pending>` forever, because nothing in Kubernetes implements the load-balancer API. **MetalLB** is that
+implementation, and `basic-k8s` installs it in two steps.
+
+```bash
+k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+
+k get ns
+# NAME              STATUS   AGE
+# metallb-system    Active   20s
+
+k get pod,svc -n metallb-system
+# NAME                              READY   STATUS    RESTARTS   AGE
+# pod/controller-7d4b6c5f9-xxxxx    1/1     Running   0          18s
+# pod/speaker-abcde                 1/1     Running   0          18s      ← one per node, a DaemonSet
+
+# NAME                  TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+# service/webhook-service  ClusterIP   10.98.234.11   <none>        443/TCP   18s
+```
+
+**Step 2 — the IPAddressPool.** Until you define a pool, MetalLB has no addresses to hand out and the Service stays
+`pending`:
+
+```yaml
+# ip-pool.yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 172.25.230.10 - 172.25.230.30
+```
+
+```bash
+k create -f ip-pool.yaml
+k get ipaddresspool -n metallb-system
+k get svc
+# NAME      TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE
+# lb-ecom   LoadBalancer   10.98.78.195   172.25.230.10    80:32064/TCP   2m
+
+curl 172.25.230.10
+```
+
+**The address must be routable to a node.** MetalLB announces the pool addresses over ARP (layer 2 mode) or BGP
+(layer 3). In L2 mode, which is what `metallb-native.yaml` defaults to, the address has to be on the same subnet as
+the nodes so that ARP replies reach them.
+
+```bash
+# Verify MetalLB is really announcing
+k logs -n metallb-system -l app=metallb,component=speaker --tail=20
+# {"level":"info","msg":"service announcer","event":"startAdvertising","ip":"172.25.230.10",...}
+```
+
+**The full LoadBalancer lab, from `basic-k8s`:**
+
+```bash
+vi ecom.yaml
+k create -f ecom.yaml        # a 2-replica ReplicaSet of quay.io/pandeysp/mywebapp
+
+vi lb.yaml
+k create -f lb.yaml
+k get svc                   # EXTERNAL-IP <pending> — MetalLB not installed yet
+
+k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+k get pods -n metallb-system
+
+vi ip-pool.yaml
+k create -f ip-pool.yaml
+
+k get svc                   # EXTERNAL-IP 172.25.230.10
+curl 172.25.230.10
+```
+
+> **Exam note** — MetalLB is **not** on the CKA syllabus and is not installed on the exam cluster. What is worth
+> knowing: (1) a `LoadBalancer` Service is just a NodePort Service plus a controller that programs the external
+> address; (2) the NodePort is still allocated underneath, which is why the `PORT(S)` column shows
+> `80:32064/TCP`; (3) if a question says "expose the application externally" on a bare-metal cluster, the answer is
+> **NodePort** or **Ingress**, not LoadBalancer.
+
+### 2b. Installing the ingress controller yourself — `basic-k8s`'s route
+
+Part III §3.5 assumes an ingress controller is already present, because that is what the exam gives you. `basic-k8s`
+installs one from scratch, and the order matters: **MetalLB first, then ingress-nginx**, because the controller's
+Service is itself a `LoadBalancer` and needs something to allocate its address.
+
+```bash
+# 1. MetalLB + a pool (see §2a above)
+k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+k create -f ippool.yaml
+
+# 2. Clone the ingress-nginx repo and apply the cloud provider manifest
+git clone https://github.com/kubernetes/ingress-nginx.git
+ls -ltrh
+
+k apply -f ingress-nginx/deploy/static/provider/cloud/deploy.yaml
+
+k get ns
+# NAME           STATUS   AGE
+# ingress-nginx  Active   30s
+
+k get pod,svc -n ingress-nginx
+# NAME                                         READY   STATUS     RESTARTS   AGE
+# pod/ingress-nginx-admission-create-xxxxx     0/1     Completed  0          25s
+# pod/ingress-nginx-admission-patch-xxxxx      0/1     Completed  0          25s
+# pod/ingress-nginx-controller-xxxxx           1/1     Running    0          25s
+#
+# NAME                                         TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)
+# service/ingress-nginx-controller             LoadBalancer   10.104.7.211   172.25.230.10    80:31234/TCP,443:32065/TCP
+```
+
+**The two admission Jobs.** Those `Completed` pods are not leftovers — they are the admission webhook's setup and teardown.
+See Part III §3.5 for why they exist and what their failure looks like.
+
+**The three backends and one Ingress with three paths** — the `basic-k8s` version of the hotel/tea/coffee lab:
+
+```bash
+k create deploy hotel  --image=quay.io/pandeysp/hotel   --replicas=2
+# Alt image: quay.io/pandeysp/portfolio:latest
+k create deploy tea    --image=quay.io/pandeysp/tea     --replicas=2
+# Alt image: quay.io/pandeysp/tea:latest
+k create deploy coffee --image=quay.io/pandeysp/coffee  --replicas=2
+# Alt image: quay.io/pandeysp/coffee:latest
+
+k get deploy
+k expose deploy tea    --target-port=80 --port=80
+k expose deploy coffee --target-port=80 --port=80
+k expose deploy hotel  --target-port=80 --port=80
+k get svc
+```
+
+```yaml
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tour-ing
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /hotel
+            pathType: Prefix
+            backend:
+              service:
+                name: hotel
+                port:
+                  number: 80
+          - path: /tea
+            pathType: Prefix
+            backend:
+              service:
+                name: tea
+                port:
+                  number: 80
+          - path: /coffee
+            pathType: Prefix
+            backend:
+              service:
+                name: coffee
+                port:
+                  number: 80
+```
+
+```bash
+k create -f ingress.yaml
+k get ing
+k get ing -w
+
+curl 172.25.230.10/tea
+curl 172.25.230.10/coffee
+curl 172.25.230.10/hotel
+```
+
+**Why `rewrite-target: /` is needed here.** The three Services expect `/`, not `/tea`. Without the annotation, a request
+for `/tea` is forwarded to the `tea` Service as `GET /tea`, which nginx answers with `404`. The annotation rewrites the
+URI to `/` before proxying. See Part III §3.5 "Rewrite — the annotation that catches everyone".
+
+**Testing from a browser in KillerCoda.** Your note:
+
+> *go to killercoda right side → select target port → Access port → enter the 30003*
+
+KillerCoda (and most lab environments) only expose a fixed set of ports on the node. If the Service's `nodePort` is not
+one of them, `curl` from inside the cluster works but the browser cannot reach it. Either pick a `nodePort` that the
+environment exposes, or use `kubectl port-forward`:
+
+```bash
+k port-forward svc/node-svc 8080:80
+# then browse to localhost:8080
+```
+
+> **Exam note** — when an Ingress returns `404` but `kubectl get ing` shows an `ADDRESS`, the three causes in order
+> are: (1) the path does not match because `pathType` is wrong (`Exact` vs `Prefix`), (2) the rewrite annotation is
+> missing, (3) the Service has no endpoints. Check `kubectl get endpoints <svc>` before anything else.
+
 ## 3.3 kube-proxy — how the virtual IP actually works
 
 `ClusterIP` is not bound to any interface. It exists only as iptables/IPVS rules in the node's netfilter.

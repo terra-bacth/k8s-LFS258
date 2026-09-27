@@ -335,6 +335,244 @@ window, but required when two versions cannot coexist (e.g. a schema migration o
 
 ---
 
+### 3b. `change-cause`, `rollout history` and `rollout undo --to-revision`
+
+`basic-k8s` walks the full revision lifecycle on a real Deployment, which is the part most people skip.
+
+```bash
+vi depl.yaml
+```
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydep
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/production:v1
+  selector:
+    matchLabels:
+      app: webapp
+```
+
+```bash
+k create -f depl.yaml
+k get deploy
+k get pods
+k describe deploy mydep
+k get rs
+# NAME               DESIRED   CURRENT   READY   AGE
+# mydep-56f6f5d5d5   3         3         3       40s
+
+k get rs mydep-56f6f5d5d5
+k describe rs mydep-56f6f5d5d5
+k describe pod mydep-56f6f5d5d5-4dvct
+```
+
+**Step 1 — expose it, so you can see the version change from outside:**
+
+```bash
+k expose deploy mydep --name=dep-svc --target-port=80 --port=80 --type=LoadBalancer
+k get svc
+# NAME      TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)        AGE
+# dep-svc   LoadBalancer   10.106.26.186  172.25.230.10   80:31234/TCP   10s
+
+curl 10.106.26.186
+```
+
+**Step 2 — update the image, which starts a new revision:**
+
+```bash
+k set image deploy mydep con1=quay.io/pandeysp/production:v2
+#                      ^^^^ the CONTAINER name, not the deployment name
+
+k get svc
+k get rs
+# NAME               DESIRED   CURRENT   READY   AGE
+# mydep-56f6f5d5d5   0         0         0       90s     ← scaled to zero
+# mydep-7d9f8c6b4q   3         3         3       10s     ← the new ReplicaSet
+
+curl 10.106.26.186          # now serving v2
+```
+
+**Step 3 — annotate the revision with a change cause.** Without this, `rollout history` shows a bare
+`REVISION  CHANGE-CAUSE` with nothing in it:
+
+```bash
+kubectl annotate deploy mydep kubernetes.io/change-cause="This is version 2"
+
+k rollout history deploy mydep
+# deployment.apps/mydep
+# REVISION  CHANGE-CAUSE
+# 1         <none>
+# 2         This is version 2
+```
+
+> **Exam note** — the annotation must be applied **after** the change you want to label, and it applies to the revision
+> that is current at that moment. There is no way to retro-label an older revision. The annotation is
+> `kubernetes.io/change-cause` and it lives in `metadata.annotations` of the **Deployment's pod template**.
+
+**Step 4 — roll back:**
+
+```bash
+k rollout undo deploy mydep                  # back to the previous revision (2 → 1)
+k get pods
+curl 10.106.26.186                          # serving v1 again
+
+k rollout undo deploy mydep                  # and forward again
+k rollout undo deploy mydep --to-revision=1  # or jump straight to a specific revision
+curl 10.106.26.186
+```
+
+```bash
+# The supporting commands
+k rollout status deploy mydep               # block until the rollout completes
+k rollout history deploy mydep --revision=2 # the full template of one revision
+k rollout restart deploy mydep              # rolling restart, no image change
+k rollout pause deploy mydep                # stop the rollout midway
+k rollout resume deploy mydep
+```
+
+**Step 5 — scale and autoscale:**
+
+```bash
+k scale deploy mydep --replicas=5
+k scale deploy mydep --replicas=2
+k autoscale deploy mydep --min=2 --max=8 --cpu-percent=80
+k get hpa
+```
+
+> **Exam note** — `kubectl rollout undo` without `--to-revision` goes to the **immediately previous** revision, not to
+> revision 1. If you have rolled back and forth three times, "previous" is not where you think it is. Always pass
+> `--to-revision=N` when the question names a specific version.
+
+### 3c. Blue/green deployment — a Service selector switch
+
+`basic-k8s` implements blue/green with **two Deployments and one Service**, and the cutover is a single edit to the
+Service's selector. This is the cleanest possible version of the pattern.
+
+```yaml
+# blue.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bluedep
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: web
+        version: blue
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/production:v1
+  selector:
+    matchLabels:
+      app: web
+      version: blue
+```
+
+```yaml
+# green.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greendep
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: web
+        version: green
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/production:v2
+  selector:
+    matchLabels:
+      app: web
+      version: green
+```
+
+```yaml
+# bgsvc.yaml — the switch
+apiVersion: v1
+kind: Service
+metadata:
+  name: bgsvc
+spec:
+  type: LoadBalancer
+  ports:
+    - targetPort: 80
+      port: 80
+  selector:
+    version: blue
+```
+
+```bash
+k create -f blue.yaml
+k create -f green.yaml
+k create -f bgsvc.yaml
+
+k get svc
+k get pods --show-labels -o wide
+# NAME                        READY   STATUS    LABELS                        NODE
+# bluedep-xxx-aaaaa           1/1     Running   app=web,version=blue,...      node01
+# bluedep-xxx-bbbbb           1/1     Running   app=web,version=blue,...      node02
+# greendep-yyy-aaaaa          1/1     Running   app=web,version=green,...     node01
+# greendep-yyy-bbbbb          1/1     Running   app=web,version=green,...     node02
+
+curl 10.103.120.165           # blue (v1)
+```
+
+**The cutover.** Both Deployments are already running and warm; you are only changing which one the Service points at.
+
+```bash
+k edit svc bgsvc
+# go to the version line and change the version from blue to green
+#   selector:
+#     version: green
+# save and exit
+
+curl 10.103.120.165           # green (v2) — immediately
+```
+
+**Rolling back is the same edit in reverse** — no new rollout, no downtime, and the old version's pods were never
+touched:
+
+```bash
+k edit svc bgsvc
+curl 10.103.120.165
+```
+
+**Why the Service selector is only `version:` and not `app: web`.** Because `app: web` matches **both** Deployments'
+pods, so the Service would load-balance across blue and green at the same time — exactly what you do not want. The
+selector must discriminate.
+
+**Blue/green vs rolling update vs canary:**
+
+| | Mechanism | Downtime | Rollback | Cost |
+|---|---|---|---|---|
+| **Rolling update** (default) | One Deployment, new ReplicaSet scales up as the old scales down | none | `rollout undo` | 1× resources |
+| **Recreate** | One Deployment, `strategy: Recreate` — old pods deleted before new ones start | **yes** | `rollout undo` | 1× resources |
+| **Blue/green** | Two Deployments, switch the Service selector | none | re-edit the Service | **2× resources** |
+| **Canary** | Two Deployments/Ingresses, weighted split | none | set the weight to 0 | 1× + a sliver |
+
+> **Exam note** — blue/green is not a Kubernetes object; it is a *pattern* built from a Deployment, a Service and a
+> label convention. The exam asks for the pattern, so what is graded is: two Deployments, a shared Service, and a
+> selector that discriminates on the version label. See Part VII §7.29 scenario 5 for the canary variant.
+
 ## 2.4 Multi-container pods — `Deployments/multi-container-pod.yaml`, `Labs/18-side-car.yaml`, `Deployments/sloution.yaml`
 
 Containers in a pod share the network namespace (same IP, `localhost` works) and can share volumes. They are scheduled
@@ -797,6 +1035,99 @@ mutable fields, and no arbitrary JSONPath.**
 
 ---
 
+### 3a. `imagePullPolicy` — Always, IfNotPresent, Never
+
+`basic-k8s` drills all three, with `crictl images` used to prove the difference on the node.
+
+```bash
+k describe pod pod-demo-new | grep -i pull
+#     Image:          quay.io/pandeysp/nginxdemo
+#     Image ID:       quay.io/pandeysp/nginxdemo@sha256:...
+#   Image Pull Policy: IfNotPresent
+
+crictl images
+# IMAGE                                      TAG     IMAGE ID        SIZE
+# quay.io/pandeysp/nginxdemo                latest  a1b2c3d4e5f6    142MB
+```
+
+**The three values, and when each one applies:**
+
+```yaml
+# 1. Always — pull on every pod start, even if the image is already on the node
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-policy1
+spec:
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/nginx
+      imagePullPolicy: Always
+```
+
+```yaml
+# 2. IfNotPresent — use the local copy if it exists (the default when the tag is NOT :latest)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-policy2
+spec:
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/nginx
+      imagePullPolicy: IfNotPresent
+```
+
+```yaml
+# 3. Never — never contact a registry; the image must already be on the node
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-policy3
+spec:
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/mysql
+      imagePullPolicy: Never
+```
+
+**The default rule, which is the actual exam question:**
+
+| Image tag | Default `imagePullPolicy` |
+|---|---|
+| `nginx` or `nginx:latest` | `Always` |
+| `nginx:1.25` or any explicit tag | `IfNotPresent` |
+| `some/image@sha256:abc123...` (digest) | `IfNotPresent` |
+
+```bash
+# Prove the third one fails when the image is absent
+k create -f pod-policy1.yaml
+k describe pod pod-policy3 | tail -6
+# Events:
+#   Warning  Failed  ... Failed to pull image "quay.io/pandeysp/mysql":
+#   rpc error: code = Unknown desc = failed to pull and unpack image ...
+#   Normal   BackOff  ... Back-off pulling image "quay.io/pandeysp/mysql"
+#   Warning  Failed  ... Error: ErrImageNeverPull
+```
+
+`ErrImageNeverPull` is the signature of `imagePullPolicy: Never` with no local image. `ImagePullBackOff` is the
+signature of `Always`/`IfNotPresent` with a bad name, a bad tag, or no registry credentials.
+
+**Removing the policy to see the default.** `basic-k8s` deletes and recreates the pod with the field removed, which is
+the cleanest demonstration:
+
+```bash
+k delete -f pod-policy.yaml
+vi pod-policy.yaml          # remove the imagePullPolicy line
+k create -f pod-policy.yaml
+k get pods
+k describe pod pod-policy2 | grep "Pull Policy"
+```
+
+> **Exam note** — the CKA asks this in three forms: (1) "set the pull policy to IfNotPresent", (2) "why is the pod in
+> `ErrImageNeverPull`", and (3) "the image is `nginx:latest` — what is the pull policy". The third one catches people
+> who assume `IfNotPresent` is always the default. It is not: `:latest` defaults to `Always`.
+
 ## 2.7 DaemonSets — Lab `12-ds.sh`
 
 A DaemonSet runs **exactly one pod per node**, including nodes added later. Use it for log collectors, node exporters,
@@ -1009,6 +1340,107 @@ kubectl annotate pod nginx description-             # remove
 > **Exam note** — without `--overwrite`, `kubectl label` fails if the key exists. This trips people up in timed exams.
 
 ---
+
+### 9a. Set-based selectors — `in`, `notin`, `Exists`
+
+`basic-k8s` drills the **set-based** selector syntax, which is the half of label matching most candidates skip.
+
+```bash
+# Equality-based — one key, one value
+k get pods --show-labels
+k label pod pod3 env- new-                       # remove two labels at once
+k get pods --selector env=prod
+k get pods --selector env!=prod
+
+# Set-based — one key, a SET of values
+k label pod pod-demo-new test=new
+k get pods --selector 'env in (prod,dev)'
+k get pods --selector 'env notin (prod,dev)'
+k get pods --selector 'test in (new,dev)'
+k get pods --selector 'env notin (*)'            # every value, including none
+k get pods --selector 'env notin ()'             # ??? see below
+k get pods --selector 'env in ()'                # matches nothing
+```
+
+| Selector | Matches |
+|---|---|
+| `env=prod` | pods where `env` is exactly `prod` |
+| `env!=prod` | pods where `env` exists and is **not** `prod` (a pod with no `env` label is **not** matched) |
+| `env in (prod,dev)` | pods where `env` is `prod` **or** `dev` |
+| `env notin (prod,dev)` | pods where `env` exists and is neither `prod` nor `dev` |
+| `env` | pods where `env` exists, **any** value — the `Exists` form |
+| `!env` | pods where `env` does **not** exist |
+| `env notin (*)` | every pod that has an `env` label, regardless of value |
+| `env in ()` | **nothing** — an empty set matches nothing |
+
+**The same three operators exist in a ReplicaSet selector**, via `matchExpressions`:
+
+```yaml
+# basic-k8s/set-rs.yaml — a set-based ReplicaSet selector
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs-app-setbased
+spec:
+  replicas: 3
+  selector:
+    matchExpressions:
+      - key: "app"
+        operator: "In"
+        values:
+          - "dev"
+          - "stagging"
+  template:
+    metadata:
+      labels:
+        app: dev
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/nginxdemo
+```
+
+```yaml
+# The other two operators, for completeness
+  selector:
+    matchExpressions:
+      - key: app
+        operator: NotIn
+        values: ["dev", "stagging"]
+      - key: tier
+        operator: Exists            # no values: list
+      - key: legacy
+        operator: DoesNotExist     # no values: list
+```
+
+**Why this matters for the ReplicaSet.** A set-based selector makes the ReplicaSet adopt **any** pod matching
+*either* value, which `basic-k8s` demonstrates by creating pods one at a time and watching the count:
+
+```bash
+k create -f set-rs.yaml
+k get rs
+# NAME               DESIRED   CURRENT   READY   AGE
+# rs-app-setbased    3         0         0       5s
+
+k run pod3 --image quay.io/pandeysp/nginxdemo -l app=dev
+k run pod4 --image quay.io/pandeysp/nginxdemo -l app=dev
+k get rs
+# rs-app-setbased    3         2         2       30s      ← adopted both
+
+k run pod6 --image quay.io/pandeysp/nginxdemo -l app=stagging
+k get rs
+# rs-app-setbased    3         3         3       40s      ← adopted a pod with the OTHER value
+
+k describe rs rs-app-setbased | grep -A5 "Selector"
+# Selector: app in (dev,stagging)
+```
+
+Note `stagging` — a typo for `staging` that is consistent between the selector and the labels, so it works. That is a
+useful reminder that Kubernetes does not care what the value *means*, only that the selector and the labels agree.
+
+> **Exam note** — `matchLabels` and `matchExpressions` can be combined in one selector, and they are **AND**-ed. Also
+> remember: the selector is **immutable** after creation on a Deployment. On a ReplicaSet it is effectively immutable
+> too (changing it orphans the existing pods).
 
 ## 2.10 Resource requests, limits and QoS — Lab `11-resource-limits.sh`
 

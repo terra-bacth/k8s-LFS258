@@ -1,0 +1,1557 @@
+
+Docker Lab
+
+#docker --help
+#docker ps
+#docker ps -a
+#docker images
+#docker version
+#docker run --name ubuntu
+#docker run --name centos-1 ubuntu
+#docker ps
+#docker ps -a
+#
+#docker run --name centos-3 ubuntu /bin/bash
+#docker ps
+#docker ps -a
+#docker run --name centos-5  ubuntu sleep 50
+#docker ps -a
+#docker rm 1a57e4d20ff0 23d7224aead6
+#docker ps -a
+#docker rm 1041ce05339d 6bc80fcfbd2f 3b83c473fc0b
+#docker ps -a
+#docker ps
+#docker ps -a
+
+
+#docker ps
+#docker ps -a
+#docker search redis
+
+
+docker ps -a
+docker run -i --name con1 ubuntu
+docker ps
+docker ps -a
+docker run -it --name con2 ubuntu
+docker run -dit --name con3 ubuntu
+docer exec -it e399e0e44dee /bin/bash
+docker exec -it e399e0e44dee /bin/bash
+docker ps
+docker ps -a
+docker ps
+docker ps -dit --name webserver -p 5000:80 nginx
+docker ps -dit -p 5000:80 --name webserver nginx
+docker run -dit -p 5000:80 --name webserver nginx
+docker ps
+curl localhost
+curl localhost:80
+curl localhost:5000
+
+
+#vi Dockerfile
+
+FROM ubuntu:16.04
+RUN apt-get update -y
+RUN apt-get install apache2 -y
+COPY index.html /var/www/html/index.html
+EXPOSE 80
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+
+#echo "<h1>WELCOME to DOCKERFILE</h1>" >index.html
+
+#cat index.html
+#docker build -t web-custom .
+#docker images
+#docker run -dit --name demo web-custom
+#cat /var/www/html/index.html
+#exit
+#docker ps
+#docker run -dit -p 5000:80 --name webserver web-custom
+
+Signup on this https://hub.docker.com/
+
+#docker ps
+#docker commit --help
+#vi Dockerfile
+
+FROM ubuntu:16.04
+RUN apt-get update -y
+RUN apt-get install apache2 -y
+COPY index.html /var/www/html/index.html
+EXPOSE 80
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+
+cat Dockerfile
+ls -ltrh
+echo "<h1>WELCOME TO THE WEBSERVER "YOUR-NAME"</h1>" >index.html
+ls -ltrh
+docker build -t web-custom .
+docker images
+docker run -dit -p 3000:80 --name webserver web-custom
+docker ps
+curl localhost:3000
+docker login
+docker images
+docker tag web-custom:latest <dockerusername>/us-train:v1
+docker images
+docker push <dockerusername>/us-train:v1
+
+Docker pull my image
+docker pull <dockerusername>/us-train:v1
+
+
+K8s Install Ubuntu
+
+#sudo -i
+# apt-get update
+#wget https://raw.githubusercontent.com/pandeysp1/ubuntu-k8s/refs/heads/main/install.sh
+# chmod +x install.sh
+#kubeadm init --pod-network-cidr '10.244.0.0/16' --service-cidr '10.96.0.0/16'  --ignore-preflight-errors=all --skip-token-print
+#./install.sh
+
+#kubectl get nodes
+
+alias k=kubectl
+k get nodes
+k cluster-info
+k get pods
+k get pods -A
+systemctl status kubelet
+k run pod1 --image nginx
+k get pods
+k run pod2 --image nginx
+k get pods
+k run pod2 --image redis
+k run pod3 --image redis
+k get pods
+k run pod5 --image docker.io/anarinsky/alexn-webserver:latest
+k get pods
+k get pods -w
+k get pods
+k run pod34 --image quay.io/pandeysp/nginxdemo
+k get pods -w
+k describe pod <podname>
+k get pods -o wide
+k run pod24 --image quay.io/pandeysp/nginxdemo
+k get pods -o wide
+k run pod22 --image quay.io/pandeysp/nginxdemo
+k get pods -o wide
+curl <pod-IP>
+
+K8s Documentation: https://kubernetes.io/docs/home/
+
+k get pods
+ls -ltrh
+vi pod1.yaml
+ls -ltrh
+k create -f pod1.yaml
+vi pod1.yaml
+
+iapiVersion: v1
+kind: Pod
+metadata:
+ name: first-pod
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+
+k create -f pod1.yaml
+k get pods
+k get pods -w
+k get pods
+cat pod1.yaml
+k describe pod first-pod
+k explain pod
+k explain pod.metadata
+
+
+#cat pod.yaml
+
+
+#vi multi-con.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-demo-1
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+ - name: con2
+   image: redis
+
+#k create -f multi-con.yaml
+#k get pods -w
+#k get pods
+#k describe pod pod-demo-1
+#k get pods
+#k describe pod pod-demo-1
+#k exec -it pod-demo-1 -- sh
+>>hostname
+>>pwd
+>>exit
+#k exec -it pod-demo-1 -c con2 -- bash
+>>hostname
+>>pwd
+>>exit
+#k get pods
+#ls -ltrh
+#k delete -f pod1.yaml
+#k get pods
+#k delete -f multi-con.yaml
+
+Image Pull Policy
+
+1. Always
+2. IfNotPresent
+3. Never
+
+#k describe pod pod-demo-1
+#crictl images
+#k get pods
+#docker images
+#crictl images
+#vi pod11.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-demo-new
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+
+#crictl images
+#k create -f pod11.yaml
+#k get pods
+#k get nodes -o wide
+#k get pods -o wide
+#k describe pod pod-demo-new
+#crictl images
+cp pod11.yaml pod-policy.yaml
+#vi pod-policy.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-policy2
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginx
+   imagePullPolicy: IfNotPresent
+
+
+#k create -f pod-policy.yaml
+#k get pods
+#k describe pod pod-policy2
+#vi pod-policy1.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod-policy3
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/mysql
+   imagePullPolicy: Never
+
+#k delete -f pod-policy.yaml
+#vi pod-policy.yaml
+#k create -f pod-policy.yaml
+#k get pods
+#k describe pod-policy3
+#k create -f pod-policy1.yaml
+#k describe pod pod-policy3
+
+
+
+vi multicon-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: multipod
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+ - name: con2
+   image: redis
+
+k create -f multicon-pod.yaml
+k get pods
+cp multicon-pod.yaml pod2.yaml
+vi pod2.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: multipod-new
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+ - name: con2
+   image: quay.io/pandeysp/mywebapp
+
+k create -f pod2.yaml
+k get pods
+k get pods -w
+k describe pod multipod-new
+k get pods -o wide
+curl <multipod-ip>
+curl <multipod-new-ip>
+k run pod1 --image quay.io/pandeysp/mywebapp
+k get pods -o wide
+curl <pod1-ip>
+
+
+
+Labels and Selectors
+
+#vi labelpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+ name: dev-pod
+ labels:
+  env: dev
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+
+
+#k create -f labelpod.yaml
+#k get pods
+#k get pods --show-labels
+#k run pod2 --image quay.io/pandeysp/nginxdemo
+#k get pods
+#k get pods --show-labels
+#k run pod3 --image quay.io/pandeysp/nginxdemo -l env=prod
+#k get pods --show-labels
+#k label pod pod3 --overwrite env=dev
+#k get pods --show-labels
+#vi pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: new-pod
+spec:
+ containers:
+ - name: c1
+   image: quay.io/pandeysp/nginx
+
+#k create -f pod.yaml
+#k get pods --show-labels
+#k label pod env=prod
+#k label pod pod-demo-new env=prod
+#k get pods --show-labels
+#k label pod pod2 run-
+#k get pods --show-labels
+k get pods --show-labels
+k label pod pod2 class=us
+k get pods --show-labels
+
+
+Selectors:
+    Equity based (= and !=)
+    set based
+
+#k get pods
+#k get pods --show-labels
+#k label pod pod3 env- new-
+#k get pods --show-labels
+#k get pods --selector env=prod
+#k get pods --selector env!=prod
+#k label pod pod-demo-new test=new
+#k get pods --show-labels
+#k get pods --selector 'env in (prod,dev)'
+#k get pods --selector 'env notin (prod,dev)'
+#k get pods --selector 'test in (new,dev)'
+#k get pods --selector 'env notin (*)'
+#k get pods --selector 'env notin ()'
+#k get pods --selector 'env in ()'
+#k get pods --selector --help
+#k get pods --selector
+
+
+Replica Set
+
+#vi rs.yaml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+ name: rs-app
+spec:
+ replicas: 3
+ selector:
+  matchLabels:
+   app: web-app
+ template:
+  metadata:
+   labels:
+    app: web-app
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/nginxdemo
+
+#k create -f rs.yaml
+#k get pods
+#k get nodes
+#k get pods
+#k describe rs rs-app
+#k get pods --show-labels
+#k delete -f rs.yaml --force
+#k get pods --show-labels
+#k get pods --show-labels -w
+#k get pods --show-labels
+#k get pods
+#k run pod3 --image quay.io/pandeysp/nginxdemo -l app=web-app
+#k get pods --show-labels
+#k create -f rs.yaml
+#k get rs
+#k describe rs rs-app
+#k delete pod pod3 --force
+#k describe rs rs-app
+#k get pods
+#k run pod3 --image quay.io/pandeysp/nginxdemo -l app=web-app
+#k describe rs rs-app
+#k get pods -l app=web-app
+#k describe pod rs-app-7lmtv
+#k describe rs rs-app
+#k get events
+#k scale rs rs-app --replicas=1
+#k get rs
+#k get pods
+#k scale rs rs-app --replicas=3
+#k get pods
+#k get pods -o wide
+#k delete -f rs.yaml --force
+
+
+Set based RS
+
+#vi set-rs.yaml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+ name: rs-app-setbased
+spec:
+ replicas: 3
+ selector:
+  matchExpressions:
+  - key: "app"
+    operator: "In"
+    values:
+    - "dev"
+    - "stagging"
+ template:
+  metadata:
+   labels:
+    app: dev
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/nginxdemo
+
+#k create -f set-rs.yaml
+#k get rs
+#k get pods
+#k get pods --show-labels
+#k delete -f set-rs.yaml
+#k get pods
+#k run pod3 --image quay.io/pandeysp/nginxdemo -l app=dev
+#k cat set-rs.yaml
+#k run pod4 --image quay.io/pandeysp/nginxdemo -l app=dev
+#k run pod5 --image quay.io/pandeysp/nginxdemo -l app=dev
+#k get pods
+#k delete pod pod3
+#k get pods
+#k run pod6 --image quay.io/pandeysp/nginxdemo -l app=stagging
+#k run pod7 --image quay.io/pandeysp/nginxdemo -l app=stagging
+#k get pods
+#k delete pod --all
+#k run podnew --image quay.io/pandeysp/nginxdemo -l app=stagging
+#k create -f set-rs.yaml
+#k get rs
+#k get pods
+#k describe rs rs-app-setbased
+#k delete -f set-rs.yaml --force
+
+
+Services:
+    1. CLuster IP
+    2. Node Port
+    3. Load Balancer
+
+#vi ecom.yaml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+ name: ecom
+spec:
+ replicas: 2
+ selector:
+  matchLabels:
+   app: ecommerce
+ template:
+  metadata:
+   labels:
+    app: ecommerce
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/mywebapp
+
+#k create -f ecom.yaml
+#k get pods
+#kubectl get pods
+#k get pods -o wide
+#curl <pod:IP>
+curl <pod:IP>
+#k delete pod ecom-wzfnq --force
+#k get pods
+#k get pods -o wide
+#k get svc
+#vi cluster-ip.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: cip-ecom
+spec:
+ type: ClusterIP
+ ports:
+ - targetPort: 80
+   port: 5000
+ selector:
+  app: ecommerce
+
+#k create -f cluster-ip.yaml
+#k get svc
+#k describe svc cip-ecom
+#k delete pod ecom-zc8qc --force
+#k describe svc cip-ecom
+#k get pods
+#k describe svc cip-ecom
+#k get pods
+#k get pods -o wide
+#k describe svc cip-ecom
+#k get svc
+#curl <SVC-IP:port>
+#curl 10.96.33.133:5000
+#k delete -f cluster-ip.yaml --force
+
+
+Node Port
+
+#vi ecom.yaml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+ name: ecom
+spec:
+ replicas: 2
+ selector:
+  matchLabels:
+   app: ecommerce
+ template:
+  metadata:
+   labels:
+    app: ecommerce
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/mywebapp
+
+#k create -f ecom.yaml
+
+
+#k get pods
+#k get pods -w
+#k get pods -o wide
+#ls -ltrh
+#vi nodep.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: node-svc
+spec:
+ type: NodePort
+ ports:
+ - targetPort: 80
+   port: 2000
+   nodePort: 30003
+ selector:
+  app: ecommerce
+
+#k create -f nodep.yaml
+#k get svc
+#k get node -o wide
+#curl <nodeip:nodeport>
+#curl <clusterip:2000>
+#k get node -o wide
+#got to killercoda right side --> select target port --> Access port --> enter the 30003
+
+
+Load Balancer
+
+#vi ecom.yaml
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+ name: ecom
+spec:
+ replicas: 2
+ selector:
+  matchLabels:
+   app: ecommerce
+ template:
+  metadata:
+   labels:
+    app: ecommerce
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/mywebapp
+
+#k create -f ecom.yaml
+
+#vi lb.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: lb-ecom
+spec:
+ type: LoadBalancer
+ ports:
+ - targetPort: 80
+   port: 80
+ selector:
+  app: ecommerce
+
+#k create -f lb.yaml
+#k get svc
+cat ecom.yaml
+#k get svc
+#k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+#k get pods -n metallb-system
+#vi ip-pool.yaml
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+ name: pool
+ namespace: metallb-system
+spec:
+  addresses:
+  - 172.25.230.10 - 172.25.230.30
+
+#k get svc
+#vi ip-pool.yaml
+#k create -f ip-pool.yaml
+#cat ip-pool.yaml
+
+#k get svc
+#curl 172.25.230.10
+
+
+
+Daemon Set
+
+#k get ds
+#k get ds -n kube-system
+#vim ds.yaml
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+ name: myds
+spec:
+ selector:
+  matchLabels:
+   app: monitor
+ template:
+  metadata:
+   labels:
+    app: monitor
+  spec:
+   containers:
+   - name: c1
+     image: quay.io/pandeysp/nginx
+
+#k create -f ds.yaml
+#k get ds
+#k get pods -o wide
+#k describe ds myds
+#k get pods
+#k delete pod myds-td2k2
+#k get pods
+#k get pods -o wide
+#k delete pod myds-6x75t
+#k get pods -o wide
+#k describe ds myds
+#k get ds
+#k delete -f ds.yaml
+#k get pods
+
+
+NameSpace
+
+#k get ns
+#k get pod -n kube-system
+#k get pods
+#k run pod1 --image=quay.io/pandeysp/nginx
+# k get pods
+#k run pod1 --image=quay.io/pandeysp/mysql
+#k get pods
+#k get svc
+#k get svc -n kube-system
+#k run pod1 --image=quay.io/pandeysp/mysql -n kube-system
+#k get pods
+#k get pods -n kube-system
+#k get ns
+#k delete pod pod1 -n kube-system
+#k get ns
+#k get node -n kube-system
+#k get pod -n kube-system
+#k get ns
+#k describe ns kube-system
+#k create ns USS
+#k create ns uss
+#k get ns
+#k describe ns uss
+#k run pod1 --image quay.io/pandeysp/nginxdemo -n uss
+#k get pods
+#k get pods -n uss
+#k get svc -n uss
+#vi ns.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: prod
+
+#k create -f ns.yaml
+#k get ns
+#vi uss-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: first-pod
+ namespace: uss
+spec:
+ containers:
+ - name: c1
+   image: quay.io/pandeysp/nginxdemo
+
+#k create -f uss-pod.yaml
+#k get pods -n uss
+#k get pods
+
+
+Resource Quota
+
+#k get ns
+#k describe ns kube-system
+#k create ns dev
+#k describe ns dev
+#k get ns
+#vi dev-quota.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+ name: dev-quota
+ namespace: dev
+spec:
+ hard:
+  pods: "10"
+  requests.cpu: "4"
+  limits.cpu: "5"
+  requests.memory: "2Gi"
+  limits.memory: "3Gi"
+#k create -f dev-quota.yaml
+#k get resourcequota -n dev
+#k get quota -n dev
+#k describe ns dev
+#vi limitpod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: dev-limit-pod
+ namespace: dev
+spec:
+ containers:
+ - name: c1
+   image: quay.io/pandeysp/nginx
+   resources:
+    requests:
+     memory: "100Mi"
+     cpu: "100m"
+    limits:
+     memory: "200Mi"
+     cpu: "200m"
+
+#cat limitpod.yaml
+#k create -f limitpod.yaml
+#cat limitpod.yaml
+#vi limitpod.yaml
+#k create -f limitpod.yaml
+#vi limitpod.yaml
+#k create -f limitpod.yaml
+#k get pods -n dev
+#k describe pod dev-limit-pod -n dev
+#vi limitpod.yaml
+#k get pods
+#k describe quota dev-quota -n dev
+#k get pods
+#k get pods -n dev
+#k delete -f limitpod.yaml
+#k get pods -n dev
+#k get pods
+#k describe quota dev-quota -n dev
+#vi limitpod.yaml
+#k create -f limitpod.yaml
+#k describe quota dev-quota -n dev
+#k get pods -n dev
+#k get pods -n dev -w
+#k get nodes
+#k describe node node01
+#ls -ltrh
+#k delete -f dev-quota.yaml
+#k delete -f limitpod.yaml#k get pods -n dev
+
+
+Environment
+
+1. Plain key
+2. Config Map
+3. Secrets
+
+#vi podenv.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: db-pod-irina
+spec:
+ containers:
+ - name: c1
+   image: quay.io/pandeysp/mysql
+   env:
+   - name: MYSQL_ROOT_PASSWORD
+     value: myroot
+   - name: MYSQL_USER
+     value: jeff
+   - name: MYSQL_PASSWORD
+     value: alex123
+
+#k create -f podenv.yaml
+#k get pods
+#k get pods -w
+#k describe pod db-pod-irina
+#k exec -it db-pod-irina -- bash
+>>#env | grep -i mysql
+>>#mysql -u jeff -p
+>>#alex123
+>>#exit
+>>#exit
+#k delete -f podenv.yaml
+
+
+Config Map
+
+#k get cm
+#k create cm --help
+#k create cm conf --from-literal MYSQL_ROOT_PASSWORD=root123 --from-literal MYSQL_USER=deb --from-literal MYSQL_PASSWORD=selman123
+
+#k get cm
+#k describe cm conf
+#vi cm-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: cm-pod
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/mysql
+   envFrom:
+   - configMapRef:
+      name: conf
+
+#k create -f cm-pod.yaml
+#k get pods
+#k get pods
+#k describe pod cm-pod
+#k get ppods
+#k get pods
+#k exec -it cm-pod -- bash
+>>#env | grep -i mysql
+>>#mysql -u deb -p
+>>#selman123
+>>#exit
+>>#exit
+#k delete -f cm-pod.yaml
+
+
+Secrets
+
+#k get secrets
+#k create secret generic creds --from-literal MYSQL_ROOT_PASSWORD=root123 --from-literal MYSQL_USER=pandey --from-literal MYSQL_PASSWORD=pandey123
+#k create secret --help
+#k get secrets
+#vi sec-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: secret-pod
+spec:
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/mysql
+   envFrom:
+   - secretRef:
+      name: creds
+
+#k create -f sec-pod.yaml
+#k get pods
+#k get pods -w
+#k get secrets
+#k describe secrets creds
+#k describe pod secret-pod
+#k get pods
+#k exec -it secret-pod -- bash
+>>#env | grep -i mysql
+>>#mysql -u pandey -p
+>>#pandey123
+>>#exit
+>>#exit
+#k delete -f sec-pod.yaml
+#k delete secret creds
+
+
+Rolling Update
+
+
+#k get nodes
+#k get pods
+#vi depl.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: mydep
+spec:
+ replicas: 3
+ template:
+  metadata:
+   labels:
+    app: webapp
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/production:v1
+ selector:
+  matchLabels:
+   app: webapp
+
+#k create -f depl.yaml
+#k get deploy
+#k get deploy -w
+#k get deploy
+#k get pods
+#k get deploy
+#k get deploy -w
+#k get pods
+#k describe deploy mydep
+#k get rs
+#k get pod
+#k describe deploy mydep
+#k get rs mydep-56f6f5d5d5
+#k describe rs mydep-56f6f5d5d5
+#k get pods
+#k describe pod mydep-56f6f5d5d5-4dvct
+#k get pods
+#k explain deployment
+#k get pods
+#k expose deploy mydep --name=dep-svc --target-port=80 --port=80 --type=LoadBalancer
+#k get svc
+#k get svc
+#curl 10.106.26.186
+#k get svc
+#k set image deploy mydep con1=quay.io/pandeysp/production:v2
+#k get svc
+#curl 10.106.26.186
+#kubectl annotate deploy mydep kubernetes.io/change-cause="This is version 2"
+#k get deploy
+#k desribe deploy mydep
+#k describe deploy mydep
+#k get rs
+#k set image i
+#curl 10.106.26.186
+#k rollout history deploy mydep
+#k rollout undo deploy mydep
+#k get pods
+#k rollout undo deploy mydep
+#curl 10.106.26.186
+#k rollout undo deploy mydep
+#curl 10.106.26.186
+#k rollout undo deploy mydep --to-revision=1
+#curl 10.106.26.186
+#k scale deploy mydep --replicas=5
+#k scale deploy mydep --replicas=2
+#k autoscale deploy mydep --min=2 --max=8 --cpu-percent=80
+
+
+
+Recreate
+
+
+#vi re-dep.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: re-mydep
+spec:
+ replicas: 3
+ template:
+  metadata:
+   labels:
+    app: webapp
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/production:v1
+ selector:
+  matchLabels:
+   app: webapp
+ strategy:
+  type: Recreate
+
+#k create -f re-dep.yaml
+#k get pods -w
+#k get deploy
+#k describe deploy re-mydep
+#k expose deploy re-mydep --name=dep-svc --target-port=80 --port=80 --type=LoadBalancer
+#k get svc
+#k describe svc dep-svc
+#curl 10.111.84.145
+#k set image deploy re-mydep con1=quay.io/pandeysp/production:v2
+#k set image deploy re-mydep con1=quay.io/pandeysp/production:v3
+#k scale deploy re-mydep --replicas=5
+#k scale deploy re-mydep --replicas=2
+
+
+Blue Green Dep
+
+#vi blue.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: bluedep
+spec:
+ replicas: 3
+ template:
+  metadata:
+   labels:
+    app: web
+    version: blue
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/production:v1
+ selector:
+  matchLabels:
+   app: web
+   version: blue
+
+#k create -f blue.yaml
+#k get pods -w
+#k get pods
+
+#vi green.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: greendep
+spec:
+ replicas: 3
+ template:
+  metadata:
+   labels:
+    app: web
+    version: green
+  spec:
+   containers:
+   - name: con1
+     image: quay.io/pandeysp/production:v2
+ selector:
+  matchLabels:
+   app: web
+   version: green
+
+#k create -f green.yaml
+#k get pods -w
+#k get pods
+#k get deploy
+#vi bgsvc.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: bgsvc
+spec:
+ type: LoadBalancer
+ ports:
+ - targetPort: 80
+   port: 80
+ selector:
+  version: blue
+
+#k create -f bgsvc.yaml
+#k get svc
+#curl 10.103.120.165
+#k get svc
+#k edit svc bgsvc
+go to version line and change the version from blue to green
+save and exit
+reload the page
+#curl 10.103.120.165
+#k edit svc bgsvc
+#curl 10.103.120.165
+
+
+Storage:
+    1. Empty Dir
+    2. HostPath
+    3.  PV and PVC
+
+Empty Dir
+
+#vim emptydir.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: mypod
+spec:
+ volumes:
+ - name: emphemeral
+   emptyDir: {}
+ containers:
+ - name: c1
+   image: quay.io/pandeysp/nginxdemo
+   volumeMounts:
+   - name: emphemeral
+     mountPath: /mydata
+
+#k create -f emptydir.yaml
+#k get pods
+#k get pods -o wide
+#k describe pod mypod
+#k get pods -o wide
+#k exec -it mypod -- sh
+>>#cd mydata
+>>#echo "Hello from containers" > file1
+>>#cat file1
+>>#exit
+open the worker node where pod is running
+#find / -name file1
+#cd /var/lib/kubelet/pods/UID/volumes/kubernetes.io~empty-dir/emphemeral
+#cat file1
+#echo "Hello from node" > file2
+switch back to master and confim the file is created and seen in container
+#k exec -it mypod -- sh
+>>#cd mydata
+>>#cat file2
+>>#exit
+#k delete pod mypod
+you can open the worker node and see the storage is deleted along with pod
+
+
+Task: Find a way to define size limit in emptydir type of storage
+Doc of K8s
+
+
+HostPath
+#vim hostpath.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: myhostpod
+spec:
+ volumes:
+ - name: host-vol
+   hostPath:
+    path: /mnt
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+   volumeMounts:
+   - name: host-vol
+     mountPath: /data
+
+#k create -f hostpath.yaml
+#k get pods -o wide
+#k get pods
+#k exec -it myhostpod -- sh
+>>#cd data
+>>#echo "Hello from containers" > file1
+>>#cat file1
+>>#exit
+open the node where pod is running and open the /mnt
+#ls
+#cat file1
+#echo "Hello fromnode" > file2
+#ls
+open the master node and obeserve the container showing 2 files
+#k exec -it myhostpod -- sh
+>>#cd data
+>>#ls
+>>exit
+#k get pods
+#k delete -f hostpath.yaml
+#k get pods
+even you have delete the pod the files will remian in the node /mnt directory
+and if you spin your pod again and its created in the same node, the files will be present
+in the container.
+
+
+
+PV and PVC
+
+
+#vim pv.yaml
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+ name: pv1
+spec:
+ storageClassName: local-path
+ capacity:
+  storage: 1Gi
+ accessModes:
+ - ReadWriteMany
+ hostPath:
+  path: /mnt
+
+#vim pvc.yaml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: pvc1
+spec:
+ storageClassName: local-path
+ accessModes:
+ - ReadWriteMany
+ resources:
+  requests:
+   storage: 1Gi
+ volumeName: pv1
+
+#k create -f pv.yaml -f pvc.yaml
+# k get pv,pvc
+
+#vi pvpod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pv-pod
+spec:
+ volumes:
+ - name: persist
+   persistentVolumeClaim:
+    claimName: pvc1
+ containers:
+ - name: con1
+   image: quay.io/pandeysp/nginxdemo
+   volumeMounts:
+   - name: persist
+     mountPath: /mycon
+
+#k create -f pvpod.yaml
+#k get pods
+#k describe pod pv-pod
+#k describe pv pv1
+#k describe pvc pvc1
+#k get pods
+#k exec -it pv-pod -- sh
+>>#cd mycon
+>>#echo "Hello from containers" > newfile1
+>>#cat newfile1
+>>#exit
+#k get pods -o wide
+#k delete -f pvpod.yaml
+#k create -f pvpod.yaml
+#k get pods -o wide
+#k exec -it pv-pod -- sh
+>>#cd mycon
+>>#cat newfile1
+>>#exit
+#k get pv
+#k get pv,pvc
+
+
+RBAC
+
+#k api-resources
+#k api-resources --namespaced=true
+#k api-resources --namespaced=false
+#k get roles
+#k create role myrole --verb=get,list --resource=pod,svc
+#k get roles
+#k describe role myrole
+#k config get-contexts
+#k run pod1 --image quay.io/pandeysp/nginxdemo
+#k get pods
+#k get pods
+#k describe pod pod1
+#k get roles
+#k create rolebinding sabind --role=myrole --serviceaccount=default:default
+#k get rolebinding sabind
+#k describe role myrole
+#k describe rolebinding sabind
+#k auth can-i get cm --as=system:serviceaccount:default:default
+#k auth can-i get pod --as=system:serviceaccount:default:default
+#k auth can-i get pv --as=system:serviceaccount:default:default
+#k auth can-i create pod --as=system:serviceaccount:default:default
+#k get sa
+#k describe sa default
+#k create sa auto
+#k get sa
+#k create role myrole1 --verb=create --resource=pod,rs
+#k get roles
+#k create rolebinding sabindnew --role=myrole1 --serviceaccount=default:auto
+#k get sa
+#k describe rolebinding sabindnew
+#k auth can-i create pod --as=system:serviceaccount:default:auto
+#k auth can-i get pod --as=system:serviceaccount:default:auto
+
+#k create role myrole --verb=get,list --resource=pod,svc
+#k get roles
+#k describe role myrole
+#k create rolebinding mybind --role=myrole --user=pandey
+#k get rolebinding
+#k describe rolebinding mybind
+#k config use-context pandey
+#k get pods
+#k config get-contexts
+#k get svc
+#k get cm
+#k delete pod pod1
+#k describe pod pod1
+#k get nodes
+#k config use-context kubernetes-admin@kubernetes
+#k config get-contexts
+#k get nodes
+#k auth can-i get cm --user=pandey
+#k auth can-i get pod --user=pandey
+#k auth can-i create pod --user=pandey
+#k auth can-i create svc --user=pandey
+#k auth can-i get svc --user=pandey
+
+
+#k api-resources --namespaced=false
+#k get clusterrole
+#k describe clusterrole cluster-admin
+#k create clusterrole myclusterrole --verb=get,list --resource=ns,nodes
+#k describe clusterrole myclusterrole
+#k create clusterrolebinding --clusterrole=myclusterrole --user=pandey
+#k create clusterrolebinding myclsuterbind --clusterrole=myclusterrole --user=pandey
+#k describe clusterrolebinding myclsuterbind
+#k auth can-i get nodes --user=pandey
+#k auth can-i get ns --user=pandey
+#k auth can-i get sc --user=pandey
+#k create clusterrolebinding sabindclusternew --clusterrole=myclusterrole --serviceaccount=default:auto
+#k describe clusterrolebinding sabindclusternew
+#k auth can-i get nodes --as=system:serviceaccount:default:auto
+#k auth can-i get ns --as=system:serviceaccount:default:auto
+#k auth can-i get sc --as=system:serviceaccount:default:auto
+
+
+
+
+*User Account
+
+#mkdir -p /root/kube/pandey
+#cd /root/kube/pandey
+#openssl genrsa -out pandey.key 2048
+#openssl req -new -key pandey.key -out pandey.csr
+--country=IN
+--state=delhi
+--commonName=pandey
+(rest can be skiped)
+open a new tab
+#cat pandey.csr | base64 -w 0
+copy the content to previous tab and paste in csr request field
+
+#vim csr-pandey.yaml
+
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+ name: pandey
+spec:
+ groups:
+ - system:authenticated
+ request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ3FEQ0NBWkFDQVFBd1l6RUxNQWtHQTFVRUJoTUNTVTR4RGpBTUJnTlZCQWdNQldSbGJHaHBNUlV3RXdZRApWUVFIREF4RVpXWmhkV3gwSUVOcGRIa3hIREFhQmdOVkJBb01FMFJsWm1GMWJIUWdRMjl0Y0dGdWVTQk1kR1F4CkR6QU5CZ05WQkFNTUJuQmhibVJsZVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUIKQUtSb3dHaVNpemZUaGFRQ2JKaTg3L3Z0YnRNN0RqempHLzBLeFBGZXI2Q21jay93ZmRzUlcyWFF4Ynowb0x2dgp4TVMwVU5jemxkdGtJOE9lT21FUXF6MFdmNUxFL3NjWncxQVZUd3EydUhhcUVSc29NYzBMMU93Tmp2YS9NcWZHCnF1cEFjRXJocVFQSEY5QWI2MmN3UXZyLy90U3RlWTFYV0o2T0hVR3Izd2RCNFYyMTdoWk1sUzU4RUxISlVtdXAKcllWYmlZenBvc1ZIT0w3M2FZOVhCN054My9RVStieEZyNHN3aGszUnIyN01kMFlsQVFYOER2V1k0NWlFMS9YbQpIN3hWVGQ3eHpZa0NvYUtpbEJBeG5rdC9pVmdHeHM2QjJTUmMyckNwbCtaVWdkVmtiYURVT3ZyTjZmZkpmWmpvCjdLRkdHWXozdUlyZGIxTmVWUFUydmhVQ0F3RUFBYUFBTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFCaHVjMVYKcnpnSGUxREgzRUdnd0d0cHZyemxkSGFiV3k5TVJxMW5CS2VCOEMySFNmRGlHV0wzRTdmMWxPNG1NYzF3SHYvKwpmaFN0ZnI5aHNXLzRSdmNHRjdHNnYmMTQ5WG44WCswdHF2WDY2ZGtaUDN3VlFCVWRGZm9OR0hVTnoyV2RtNExUCmJKMnhnWC9PRVcrdERieXdZcXZnSHVOVHNkRk5PcVl0STd1WDdHMkc2NkpyQVlkU3dxQnZ2ZFNqYVpUVVlWcWcKcHdKYTBuR0JQYlh0WDJrNklHb3ZZdEVlb2tjbE9pMnVabnVSOXhPeXc3TVpQNGdMMlRFNExwMmhjaUZyTWNiZwowaHhUSHIycDFpdGhtSXR5UUl1VVFKL1d2dUUrenAvb3JyTUtpSkVISHJWdzNCZzgyVEpZMXJCZVEzRFkvb2NvCkI2THA4TmNmbm5NcURHSWsKLS0tLS1FTkQgQ0VSVElGSUNBVEUgUkVRVUVTVC0tLS0tCg==
+ signerName: kubernetes.io/kube-apiserver-client
+ usages:
+ - client auth
+
+#k create -f csr-pandey.yaml
+#k get csr
+#k certificate approve pandey
+#k get csr
+#k get csr pandey -o yaml
+copy the certificate and open a new tab
+#echo <pastethe certificate> | base64 -d > pandey.crt
+switch back tyo previous tab
+#k config view
+#k config set-credentials pandey --client-key pandey.key --client-certificate pandey.crt
+#k config view
+#k config set-credentials pandey --client-key pandey.key --client-certificate pandey.crt --
+embed-certs
+#k config viewe
+#k config get-contexts
+#k config set-context pandey --user=pandey --cluster=kubernetes
+#k config get-contexts
+#k config use-context pandey
+#k config get-context
+#k get pods
+#k get svc
+#k get cm
+#k config use-context kubernetes-admin@kubernetes
+#k get pods
+
+
+
+Ingress Controller
+
+#k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+#k get ns
+#k get pod,svc -n metallb-system
+
+#vi ippool.yaml
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+ name: pool
+ namespace: metallb-system
+spec:
+  addresses:
+  - 172.25.230.10 - 172.25.230.30
+
+#k create -f ippool.yaml
+#git clone https://github.com/kubernetes/ingress-nginx.git
+#ls -ltrh
+#k apply -f ingress-nginx/deploy/static/provider/cloud/deploy.yaml
+#k get ns
+#k get pod,svc -n ingress-nginx
+#k create deploy hotel --image=quay.io/pandeysp/hotel --replicas=2
+#k create deploy tea --image=quay.io/pandeysp/tea   --replicas=2
+#k create deploy coffee --image=quay.io/pandeysp/coffee --replicas=2
+#k get deploy
+#k expose deploy tea --target-port=80 --port=80
+#k expose deploy coffee --target-port=80 --port=80
+#k expose deploy hotel --target-port=80 --port=80
+#k get svc
+#vi ingress.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+ name: tour-ing
+ annotations:
+  nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+ ingressClassName: nginx
+ rules:
+ - http:
+    paths:
+    - path: /hotel
+      pathType: Prefix
+      backend:
+       service:
+        name: hotel
+        port:
+         number: 80
+    - path: /tea
+      pathType: Prefix
+      backend:
+       service:
+        name: tea
+        port:
+         number: 80
+    - path: /coffee
+      pathType: Prefix
+      backend:
+       service:
+        name: coffee
+        port:
+         number: 80
+
+#k create -f ingress.yaml
+#k get ing
+#k get ing -w
+#curl 172.25.230.10/tea
+#curl 172.25.230.10/coffee
+#curl 172.25.230.10/hotel
+
+
+
+Helm
+
+Artifact Hub: https://artifacthub.io/
+
+#curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+#chmod 700 get_helm.sh
+#./get_helm.sh
+#helm
+#helm repo list
+#helm repo add bitnami https://charts.bitnami.com/bitnami
+#helm repo list
+#helm search repo bitnami | grep -i nginx
+#helm install trainig-web-server bitnami/nginx
+#k get pods,svc
+#curl 10.111.38.74
+#helm list -a
+#helm uninstall trainig-web-server
+#helm list -a
+#k get pods,svc
+#helm repo list
+#helm repo remove bitnami
+#helm repo list
+#helm repo add bitnami https://charts.bitnami.com/bitnami
+#helm install trainig-web-server bitnami/nginx
+#ls -ltrh
+#helm list -a

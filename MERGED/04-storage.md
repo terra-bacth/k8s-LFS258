@@ -199,6 +199,245 @@ volumes:
 
 ---
 
+### 2a. `emptyDir` — proving where the data actually lives
+
+`basic-k8s` walks the `emptyDir` volume all the way down to the node's filesystem, which is the only way to really
+understand what "ephemeral" means.
+
+```yaml
+# emptydir.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  volumes:
+    - name: emphemeral
+      emptyDir: {}
+  containers:
+    - name: c1
+      image: quay.io/pandeysp/nginxdemo
+      # Alt image: quay.io/pandeysp/nginxdemo:latest
+      volumeMounts:
+        - name: emphemeral
+          mountPath: /mydata
+```
+
+```bash
+k create -f emptydir.yaml
+k get pods
+k get pods -o wide
+k describe pod mypod
+
+k exec -it mypod -- sh
+/ # cd mydata
+/mydata # echo "Hello from containers" > file1
+/mydata # cat file1
+Hello from containers
+/mydata # exit
+```
+
+**Now open the node the pod is running on and find the same file:**
+
+```bash
+open the worker node where pod is running
+
+find / -name file1
+# /var/lib/kubelet/pods/6f2b1c8e-.../volumes/kubernetes.io~empty-dir/emphemeral/file1
+
+cd /var/lib/kubelet/pods/6f2b1c8e-.../volumes/kubernetes.io~empty-dir/emphemeral
+cat file1
+# Hello from containers
+
+echo "Hello from node" > file2
+```
+
+**And prove the write from the node is visible in the container:**
+
+```bash
+switch back to master and confirm the file is created and seen in container
+
+k exec -it mypod -- sh
+/mydata # cat file2
+Hello from node
+/mydata # exit
+```
+
+**The path, decoded:**
+
+```
+/var/lib/kubelet/pods/<POD-UID>/volumes/kubernetes.io~empty-dir/<VOLUME-NAME>/
+                    ^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^
+                    the pod's UID,      the volume type,      the name from
+                    not its name        with ~ for the /      spec.volumes[].name
+```
+
+```bash
+# Get the UID without guessing
+k get pod mypod -o jsonpath='{.metadata.uid}'
+# 6f2b1c8e-3a4b-4c5d-9e8f-1234567890ab
+```
+
+**The point of the exercise — `emptyDir` dies with the pod:**
+
+```bash
+k delete pod mypod
+you can open the worker node and see the storage is deleted along with pod
+```
+
+Recreate the pod and the directory is new and empty. That is what distinguishes `emptyDir` from `hostPath` (§4.8) and
+from a PVC (§4.2).
+
+**Your task, from `basic-k8s`, verbatim:**
+
+> *Task: Find a way to define size limit in emptydir type of storage*
+
+The answer is `emptyDir.sizeLimit`, and it is the answer to a real exam question:
+
+```yaml
+spec:
+  volumes:
+    - name: emphemeral
+      emptyDir:
+        sizeLimit: 500Mi        # the kubelet evicts the pod if the volume exceeds this
+```
+
+```yaml
+# The other emptyDir field, for scratch space on a specific medium
+    - name: cache
+      emptyDir:
+        medium: Memory          # a tmpfs — counts against the container's memory limit
+        sizeLimit: 128Mi
+```
+
+> **Exam note** — `medium: Memory` makes the `emptyDir` a `tmpfs`. It is RAM-backed, it is always empty at start, and
+> **it counts against the container's memory limit** rather than ephemeral-storage. `sizeLimit` works with both media.
+> On the CKA this shows up as "give the container a scratch volume capped at 256Mi".
+
+### 2b. Explicit binding with `volumeName`, and `ReadWriteMany`
+
+`basic-k8s` binds its PVC to a specific PV by name rather than letting the binder choose, and it uses
+`ReadWriteMany` — the access mode that lets **many** pods on **many** nodes mount the volume at once.
+
+```yaml
+# pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+spec:
+  storageClassName: local-path
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /mnt
+```
+
+```yaml
+# pvc.yaml — note volumeName
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: pv1
+```
+
+```yaml
+# pvpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pv-pod
+spec:
+  volumes:
+    - name: persist
+      persistentVolumeClaim:
+        claimName: pvc1
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/nginxdemo
+      # Alt image: quay.io/pandeysp/nginxdemo:latest
+      volumeMounts:
+        - name: persist
+          mountPath: /mycon
+```
+
+```bash
+k create -f pv.yaml -f pvc.yaml
+k get pv,pvc
+# NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM
+# pv1      1Gi        RWX            Retain           Bound    default/pvc1
+#
+# NAME     STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+# pvc1     Bound    pv1      1Gi        RWX            local-path     5s
+
+k create -f pvpod.yaml
+k get pods
+k describe pod pv-pod
+k describe pv pv1
+k describe pvc pvc1
+```
+
+**`volumeName` pins the binding.** Without it, the binder picks any PV whose capacity and access modes satisfy the
+request. With it, the PVC binds to **that** PV or stays `Pending`:
+
+```bash
+k get pvc pvc1
+# NAME   STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+# pvc1   Bound    pv1      1Gi        RWX            local-path     5s
+
+# If pv1 were already claimed, or the access modes disagreed:
+k describe pvc pvc1 | tail -4
+# Events:
+#   Warning  ProvisioningFailed  ... no volumes available to bind
+```
+
+**The data-survives-the-pod proof.** Delete the pod, recreate it, and the file is still there — because the PV, not the
+pod, owns the data:
+
+```bash
+k exec -it pv-pod -- sh
+/mycon # echo "Hello from containers" > newfile1
+/mycon # cat newfile1
+Hello from containers
+/mycon # exit
+
+k get pods -o wide
+k delete -f pvpod.yaml
+k create -f pvpod.yaml
+k get pods -o wide
+
+k exec -it pv-pod -- sh
+/mycon # cat newfile1
+Hello from containers          ← still here
+/mycon # exit
+
+k get pv
+k get pv,pvc
+```
+
+**`ReadWriteMany` vs the other two modes:**
+
+| Access mode | Short | Mounted by | Typical backend |
+|---|---|---|---|
+| `ReadWriteOnce` | `RWO` | one node, read-write | block storage (EBS, GCE PD, hostPath on one node) |
+| `ReadOnlyMany` | `ROX` | many nodes, read-only | read-only shares |
+| `ReadWriteMany` | `RWX` | **many nodes, read-write** | NFS, CephFS, GlusterFS |
+
+> **Exam note** — `hostPath` on a single node can *advertise* `RWX`, as `basic-k8s` does, but the pods still have to
+> land on the **same node** for it to mean anything — a pod on node02 mounting node01's `/mnt` sees nothing. On a
+> multi-node cluster, real `RWX` needs a shared filesystem. That is why the exam's `RWX` questions are always NFS or
+> `storageClassName: no-provisioner` with a shared backend.
+
 ## 4.3 Access modes
 
 | Mode | Abbrev | Meaning | Typical backend |

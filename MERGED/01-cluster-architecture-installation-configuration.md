@@ -270,6 +270,111 @@ sudo kubeadm join <CP_IP>:6443 --token <token> \
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
+### 4a. The `kubeadm init` flags your `basic-k8s` lab used
+
+`basic-k8s/basic-labs.txt` builds its cluster with the `pandeysp1/ubuntu-k8s` installer script and then runs
+`kubeadm init` by hand. The exact invocation, with every flag explained:
+
+```bash
+sudo -i
+apt-get update
+wget https://raw.githubusercontent.com/pandeysp1/ubuntu-k8s/refs/heads/main/install.sh
+chmod +x install.sh
+
+kubeadm init \
+  --pod-network-cidr '10.244.0.0/16' \
+  --service-cidr '10.96.0.0/16' \
+  --ignore-preflight-errors=all \
+  --skip-token-print
+
+./install.sh
+
+kubectl get nodes
+```
+
+| Flag | What it does | When you need it |
+|---|---|---|
+| `--pod-network-cidr` | The range pods get IPs from. flannel's default is `10.244.0.0/16`; calico's is `192.168.0.0/16`. | **Always** for flannel — the DaemonSet reads it from the config |
+| `--service-cidr` | The range Services' virtual IPs come from. Default `10.96.0.0/12`. | Only if you want a non-default range |
+| `--ignore-preflight-errors=all` | Skips **every** pre-flight check — swap, cgroups, ports, kernel modules. | When preflight fails for an environmental reason you cannot fix (common in a lab VM). It hides real problems, so use it knowingly |
+| `--skip-token-print` | Does not print the `kubeadm join` command to stdout | When you plan to create the token later with `kubeadm token create --print-join-command` |
+
+```bash
+# If you skipped the join command, get it back
+kubeadm token create --print-join-command
+kubeadm token list
+```
+
+The installer script also sets up the `k` alias, which every command in your `basic-k8s` lab relies on:
+
+```bash
+alias k=kubectl
+echo "alias k=kubectl" >> ~/.bashrc
+```
+
+> **Exam note** — `--pod-network-cidr` must match the CNI you are about to install. flannel wants `10.244.0.0/16`;
+> calico wants `192.168.0.0/16`. Passing the wrong one means pods come up `NotReady` with
+> `NetworkPluginNotReady` / `cni plugin not initialized`, and the symptom looks like a CNI bug rather than a flag
+> mismatch. See Part I §1.5.
+
+### 4b. `kubectl explain` — the in-terminal API reference
+
+`basic-k8s` uses `k explain` throughout, and it is the single most under-used command on the exam. With no browser
+available, it replaces the entire API documentation.
+
+```bash
+k explain pod
+k explain pod.metadata
+k explain pod.spec
+k explain pod.spec.containers
+k explain pod.spec.containers.env
+k explain pod.spec.containers.env.valueFrom
+k explain pod.spec.containers.resources
+k explain pod.spec.containers.resources.limits
+k explain pod.spec.containers.volumeMounts
+k explain pod.spec.volumes
+k explain pod.spec.volumes.emptyDir
+k explain pod.spec.volumes.persistentVolumeClaim
+k explain deployment
+k explain deployment.spec.strategy
+k explain deployment.spec.strategy.rollingUpdate
+k explain deployment.spec.template.spec.containers
+k explain service.spec.ports
+k explain pvc.spec
+k explain role.rules
+k explain csr.spec
+```
+
+The output is a field reference with the type, whether it is required, and a description:
+
+```bash
+$ k explain pod.spec.containers.env.valueFrom
+KIND:     Pod
+VERSION:  v1
+
+FIELD:    valueFrom <EnvVarSource>
+
+DESCRIPTION:
+     Source for the environment variable's value. Cannot be used if value is not
+     empty.
+
+FIELDS:
+   configMapKeyRef  <ConfigMapKeySelector>
+   fieldRef         <ObjectFieldSelector>
+   resourceFieldRef <ResourceFieldSelector>
+   secretKeyRef     <SecretKeySelector>
+```
+
+```bash
+# --recursive prints the whole subtree — the fastest way to learn a schema
+k explain deployment --recursive | less
+k explain deployment --recursive | grep -A2 strategy
+```
+
+> **Exam note** — when a question asks for a field you are not sure exists (`lifecycle.preStop`? `readinessProbe`?
+> `topologySpreadConstraints`?), run `k explain <resource> --recursive | grep <guess>` before writing the manifest.
+> It costs five seconds and eliminates the "invalid field" rejection entirely.
+
 ### Stacked vs external etcd (this is a favourite CKA question)
 
 | | Stacked etcd | External etcd |

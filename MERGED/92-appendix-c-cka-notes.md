@@ -1,179 +1,165 @@
-# Appendix C — Your `basic-k8s` CKA Notes
+# Appendix C — Your `basic-k8s` / `basic labs.txt` CKA Notes
 
-**STATUS: RESERVED — awaiting the `basic-k8s` file.**
+**STATUS: MERGED.** The file arrived (as `basic labs.txt`, on the `main` branch of the repo, after two failed attachment
+attempts). It is 1,300+ lines of worked labs covering Docker, Kubernetes fundamentals, controllers, Services, storage,
+RBAC, certificates, Ingress and Helm — and it turned out to contain a substantial amount of material that the rest of
+the repository did not have.
 
-The `basic-k8s` text file containing your CKA labs was referenced but did not arrive in this workspace. Only the
-LFS258 repository was delivered. Rather than guess at its contents, this appendix is pre-formatted and ready.
+This appendix is the **intake map**: what the file contained, where each lab landed, and what was genuinely new.
 
-> **Good news, though.** While looking for a `lab.txt` file you asked about (there is none anywhere in the workspace),
-> a second, complete survey of the repository turned up **266 non-`.git` files instead of 255** — the first survey had
-> been silently truncated at 200 lines. The files it missed contained a great deal of CKA lab material, and all of it is
-> now merged:
->
-> * `last-try/questions.sh` — **740 lines, 25 fully worked CKA exam questions** (now [Part VII](07-exam-drills-and-mock-exams.md))
-> * `mock-exam-1.sh`, `mock-exam-2.sh`, `mock-exam-3.sh` — three mock exams (Part VII §7.26–7.28)
-> * `last-try/scenarios-ingress.txt` and `last-try/senarisos-np.txt` — 10 scenario questions, worked (Part VII §7.29–7.30)
-> * `lightenin-labs/`, `practice-on-paper/`, `cluster-upgrade/`, `shells/`, `explore-services/`, `troubleshooting/`,
->   `yaml/`, `configmap/` — upgrade sequences, external-etcd drills, real log captures and reference manifests
-> * `kubectl-quick-refrence.sh` and `jsaon-path-examples.sh` — consolidated as
->   [Appendix D](93-appendix-d-kubectl-jsonpath-reference.md)
->
-> So most of what `basic-k8s` would have contributed is already covered. If the file adds anything beyond that, this
-> appendix is where it goes.
+A verbatim copy of the source is kept at **`basic-k8s/basic-labs.txt`** in the repository so nothing is lost.
 
 ---
 
-## C.1 How to supply it
+## C.1 Where every section of `basic-k8s/basic-labs.txt` landed
 
-Any one of these works:
-
-1. **Paste the text directly** into the chat. I will transcribe it into this appendix verbatim, preserving your code
-   blocks and comments.
-2. **Drop the file into the repository** — e.g. `MERGED/basic-k8s.txt` or `Labs/basic-k8s.md` — and tell me the path.
-3. **Attach it to a follow-up message** so it lands in the workspace alongside the repo.
-
-Once it is here I will:
-
-* transcribe it into this appendix under a `## C.N <original heading>` structure, unchanged;
-* add a `**CKA domain:**` and `**Merged into:**` line under each lab so it cross-links to Parts I–VII;
-* add any labs it contains that Parts I–VI do not already cover, as new numbered sections in the relevant Part;
-* update the [index](00-index.md) row for this appendix;
-* update [Appendix B](91-appendix-b-lfs258-cka-crosswalk.md) with the new file.
-
----
-
-## C.2 The structure each of your labs will be given
-
-So you can see exactly what arrives, here is the template every lab in this document follows — your notes will be folded
-into the same shape so the whole thing reads consistently:
-
-```
-### Lab <N>. <title>
-
-**CKA domain:** <CAIC | Workloads & Scheduling | Services & Networking | Storage | Security | Troubleshooting>
-**Merged into:** Part <X> §<Y>
-**Repo file:** <path, if it also exists in the LFS258 repo>
-**Alternative image:** quay.io/pandeysp/<image>:<tag>
-
-#### Objective
-<one or two sentences on what the task asks for>
-
-#### Commands
-<the exact commands you ran, in order>
-
-#### Manifest
-<the YAML, with the alt-image comment>
-
-#### Explanation
-<why it works, the concept behind it, and the fields that matter>
-
-#### [Your note]
-<your own annotation from the original file, verbatim>
-
-#### Exam notes
-<the gotchas, the traps, the time-savers>
-```
+| # | Section in the file | Landed in | New? |
+|---|---|---|---|
+| 1 | Docker Lab — lifecycle, interactive/detached, port publishing | [Appendix E §E.1](94-appendix-e-docker-and-helm.md) | **NEW** |
+| 2 | Dockerfile — build, tag, push, login | [Appendix E §E.1.4–E.1.5](94-appendix-e-docker-and-helm.md) | **NEW** |
+| 3 | K8s Install Ubuntu — `install.sh`, `kubeadm init` flags, `alias k` | [Part I §1.4a](01-cluster-architecture-installation-configuration.md) | **NEW** flags |
+| 4 | Pods — `k run`, `describe`, `explain`, `curl <pod-IP>` | [Part I §1.4b](01-cluster-architecture-installation-configuration.md) (`explain`), [Part II §2.1](02-workloads-and-scheduling.md) | `explain` walkthrough **NEW** |
+| 5 | Multi-container pod — `exec -c con2` | Part II §2.4 | covered |
+| 6 | **Image Pull Policy** — Always / IfNotPresent / Never | [Part II §2.3a](02-workloads-and-scheduling.md) | **NEW** |
+| 7 | Labels and Selectors — `--show-labels`, `env in (...)` | [Part II §2.9a](02-workloads-and-scheduling.md) | set-based **NEW** |
+| 8 | Replica Set — create, scale, self-healing | Part II §2.2 | covered |
+| 9 | **Set-based ReplicaSet** — `matchExpressions`, `operator: In` | [Part II §2.9a](02-workloads-and-scheduling.md) | **NEW** |
+| 10 | Services — ClusterIP / NodePort / LoadBalancer | Part III §3.2 | covered |
+| 11 | **MetalLB** — `IPAddressPool`, bare-metal LoadBalancer | [Part III §3.2a](03-services-and-networking.md) | **NEW** |
+| 12 | DaemonSet — `myds`, delete a pod and watch it return | Part II §2.7 | covered |
+| 13 | Namespace — `create ns`, `-n`, `namespace:` in metadata | Part I §1.3 | covered |
+| 14 | ResourceQuota — `dev-quota` with pods/cpu/memory | Part I §1.3, Part II §2.10 | covered |
+| 15 | Environment — plain key / ConfigMap / Secrets, `envFrom` | **Part V §5.6** (`envFrom` forms) | `envFrom` **NEW** |
+| 16 | **`change-cause` annotation** + `rollout history` / `undo` / `--to-revision` | [Part II §2.3b](02-workloads-and-scheduling.md) | **NEW** |
+| 17 | Recreate — `strategy: type: Recreate` | Part II §2.3 | covered |
+| 18 | **Blue/green deployment** — two Deployments, switch the Service | [Part II §2.3c](02-workloads-and-scheduling.md) | **NEW** |
+| 19 | **`emptyDir`** — the on-node `/var/lib/kubelet/pods/...` walkthrough | [Part IV §4.2a](04-storage.md) | **NEW** |
+| 20 | HostPath — same walkthrough, data survives the pod | Part IV §4.8 | covered |
+| 21 | **PV/PVC with `volumeName`** — explicit binding, `ReadWriteMany` | [Part IV §4.2b](04-storage.md) | **NEW** |
+| 22 | RBAC — Role, RoleBinding, `auth can-i`, cluster-scoped | Part V §5.3–5.4 | covered |
+| 23 | **Proving RBAC by switching context** — `use-context pandey`, run the command | [Part V §5.3a](05-security.md) | **NEW** |
+| 24 | **User certificate** — `genrsa` → `req` → CSR with `groups:` → approve → `--embed-certs` | [Part V §5.8a](05-security.md) | **NEW** details |
+| 25 | **Ingress controller install** — MetalLB then ingress-nginx from the repo | [Part III §3.2a–3.2b](03-services-and-networking.md) | **NEW** |
+| 26 | **hotel/tea/coffee** — one Ingress, three paths, `rewrite-target` | **Part III §3.2b** | covered (pattern) |
+| 27 | **Helm** — repo, search, install, list, uninstall | [Appendix E §E.2](94-appendix-e-docker-and-helm.md) | **NEW** |
 
 ---
 
-## C.3 CKA domains your `basic-k8s` notes most likely cover
+## C.2 The genuinely new material, in one place
 
-Mapping so nothing gets lost when the file arrives. If your notes touch any of these, it lands in the Part shown:
+Ten things from `basic labs.txt` were not anywhere else in the repository, and are now merged:
 
-| Topic in your CKA notes | Lands in |
-|---|---|
-| Cluster components, `kubeadm init/join/upgrade`, HA control plane, etcd | Part I §1.1–1.4, §1.9, §1.11 |
-| CNI plugin install, pod CIDR, `ip`/`iptables`, DNS (CoreDNS) | Part I §1.5, Part III §3.1, §3.8 |
-| Static pods, second scheduler, kubelet config, `staticPodPath` | Part I §1.6, §1.7 |
-| Metrics Server / aggregation layer, `kubectl top` | Part I §1.8 |
-| RBAC — Roles, ClusterRoles, bindings, ServiceAccounts, `auth can-i` | Part V §5.2–5.5 |
-| Certificates, CSR objects, kubeconfig, TLS for components | Part V §5.8, §5.9 |
-| SecurityContext, capabilities, `runAsNonRoot`, Pod Security | Part V §5.7 |
-| Private registries, image pull secrets | Part V §5.6 |
-| NetworkPolicy — ingress, egress, `podSelector`/`namespaceSelector` | Part III §3.4 |
-| Services — ClusterIP, NodePort, LoadBalancer, headless, endpoints | Part III §3.2, §3.3 |
-| Ingress — controller install, host/path routing, TLS, rewrite | Part III §3.5 |
-| PV / PVC / StorageClass / access modes / reclaim policy / CSI | Part IV §4.1–4.7 |
-| Pods, ReplicaSets, Deployments, rollouts, rollbacks, `rollout undo` | Part II §2.1–2.3 |
-| Multi-container pods, sidecar, ambassador, adapter, init containers | Part II §2.4, §2.5 |
-| `command` / `args` / ENTRYPOINT / CMD, Downward API | Part II §2.6 |
-| DaemonSets, StatefulSets, Jobs, CronJobs | Part II §2.7, §2.8 |
-| Labels, selectors, annotations, `--show-labels` | Part II §2.9 |
-| Requests, limits, QoS, LimitRange, ResourceQuota, HPA | Part II §2.10 |
-| Taints, tolerations, node affinity, pod affinity, topologyKey | Part II §2.11 |
-| Probes — liveness, readiness, startup | Part II §2.13 |
-| Node drain/cordon/uncordon, upgrades, cluster maintenance | Part I §1.12, §1.11 |
-| Troubleshooting — pod status, logs, `crictl`, control plane, network | Part VI §6.1–6.11 |
-| **Full worked exam questions, mock exams, Ingress/NetworkPolicy scenarios** | **Part VII §7.1–7.31** |
-| `kubectl` command reference, JSONPath | Appendix D |
+1. **Docker fundamentals and Dockerfiles** — Appendix E §E.1. The repo had no container-runtime material at all, and
+   `Deployments/DockerFile` was the only Dockerfile in it.
+2. **`imagePullPolicy`** — Part II §2.3a. The `:latest` → `Always` default rule, and the `ErrImageNeverPull` vs
+   `ImagePullBackOff` distinction.
+3. **Set-based selectors** — Part II §2.9a. `--selector 'env in (prod,dev)'`, `notin`, `Exists`, `DoesNotExist`, and the
+   same three operators in a ReplicaSet's `matchExpressions`.
+4. **`change-cause` and the revision lifecycle** — Part II §2.3b. `kubectl annotate deploy mydep
+   kubernetes.io/change-cause=...`, `rollout history`, `rollout undo --to-revision=N`.
+5. **Blue/green deployment** — Part II §2.3c. Two Deployments and a Service whose selector discriminates on a
+   `version:` label, with the cutover being a single `kubectl edit svc`.
+6. **MetalLB** — Part III §3.2a. The `IPAddressPool` CRD that makes `LoadBalancer` work on bare metal, and the reason
+   `EXTERNAL-IP` is `<pending>` without it.
+7. **Installing the ingress controller** — Part III §3.2b. MetalLB first, then `ingress-nginx/deploy/static/provider/cloud/deploy.yaml`.
+8. **`emptyDir` on the node** — Part IV §4.2a. The `/var/lib/kubelet/pods/<UID>/volumes/kubernetes.io~empty-dir/<name>/`
+   path, plus the `sizeLimit` and `medium: Memory` answers to your own *"Task: Find a way to define size limit in
+   emptydir type of storage"*.
+9. **`volumeName` explicit binding** — Part IV §4.2b. Pinning a PVC to a specific PV, and using `ReadWriteMany`.
+10. **Proving a permission by using it** — Part V §5.3a. `kubectl config use-context pandey`, then running the command
+    and reading the `Forbidden:` error, which proves far more than `auth can-i`.
+11. **CSR `groups:` and `--embed-certs`** — Part V §5.8a. The `system:authenticated` group, and why the kubeconfig must
+    be self-contained.
 
 ---
 
-## C.4 What is already fully covered without your notes file
+## C.2 The lab-environment facts this file establishes
 
-If your `basic-k8s` notes largely repeat LFS258 ground, you may find this document already covers them. For reference,
-the complete competency list of the current CKA curriculum and where each one is addressed:
+Everything else in this document assumes a kubeadm cluster. `basic labs.txt` pins down the specifics of *yours*:
 
-| # | CKA competency | Covered in |
+| Fact | Value | Where it came from |
 |---|---|---|
-| 1 | Manage RBAC | Part V §5.2–5.5 |
-| 2 | Prepare underlying infrastructure for a cluster install | Part I §1.4 |
-| 3 | Create and manage clusters with kubeadm | Part I §1.4 |
-| 4 | Manage the lifecycle of a cluster | Part I §1.11, §1.12 |
-| 5 | Implement and configure a CNI plugin | Part I §1.5 |
-| 6 | Configure a highly-available control plane | Part I §1.4, §1.9 |
-| 7 | Provision underlying infrastructure | Part I §1.4 |
-| 8 | Perform a version upgrade | Part I §1.11 |
-| 9 | Implement and configure an etcd cluster | Part I §1.9 |
-| 10 | Perform an etcd backup and restore | Part I §1.9 |
-| 11 | Understand deployments and rolling updates / rollbacks | Part II §2.3 |
-| 12 | Use ConfigMaps and Secrets | Part II §2.5, Part V §5.6 |
-| 13 | Scale applications | Part II §2.2, §2.10 |
-| 14 | Primitives for robust, self-healing deployments | Part II §2.2, §2.3, §2.7, §2.8 |
-| 15 | Resource limits and their effect on scheduling | Part II §2.10 |
-| 16 | Manifest management and common tooling | Index §"kubectl patterns", Part III §3.6 |
-| 17 | Configure Pod Admission and Security Context | Part V §5.7 |
-| 18 | Use labels, selectors and annotations | Part II §2.9 |
-| 19 | Configure liveness, readiness, startup probes | Part II §2.13 |
-| 20 | Use the Downward API | Part II §2.6 |
-| 21 | Multi-container pods and init containers | Part II §2.4, §2.5 |
-| 22 | Rolling update / rollback on a Deployment | Part II §2.3 |
-| 23 | Understand NetworkPolicies | Part III §3.4 |
-| 24 | Cluster network / CNI plugin basics | Part I §1.5 |
-| 25 | Networking configuration on cluster nodes | Part III §3.1 |
-| 26 | Connectivity between pods | Part III §3.1 |
-| 27 | Define and enforce Network Policies | Part III §3.4 |
-| 28 | Kubernetes networking model — pod/service network, ClusterIP, NodePort, LoadBalancer, Ingress | Part III §3.1–3.5 |
-| 29 | Ingress rules and controllers | Part III §3.5 |
-| 30 | DNS service for name resolution | Part III §3.1, §3.2, Part VI §6.5 |
-| 31 | Service networking model and kube-proxy | Part III §3.3 |
-| 32 | Storage classes, PVs, PVCs | Part IV §4.1–4.5 |
-| 33 | Container Storage Interface | Part IV §4.7 |
-| 34 | Configure applications with persistent storage | Part IV §4.2, §4.8 |
-| 35 | Volume modes, access modes, reclaim policies | Part IV §4.3, §4.4, §4.6 |
-| 36 | PVCs and how they bind | Part IV §4.1–4.4 |
-| 37 | Authentication and authorisation | Part V §5.1–5.5 |
-| 38 | Kubernetes security primitives | Part V §5.7 |
-| 39 | Network policies (see #23) | Part III §3.4 |
-| 40 | The Kubernetes certificate system | Part V §5.8 |
-| 41 | Configure `kubectl` contexts and switch between them | Part V §5.9 |
-| 42 | Create and manage TLS certificates for cluster components | Part V §5.8 |
-| 43 | Configure a SecurityContext for a pod or container | Part V §5.7 |
-| 44 | Define ServiceAccount permissions | Part V §5.5 |
-| 45 | Create and use ServiceAccounts | Part V §5.5 |
-| 46 | Pull images from a private registry | Part V §5.6 |
-| 47 | Troubleshoot cluster component failure | Part VI §6.3 |
-| 48 | Troubleshoot application failure | Part VI §6.1, §6.2, §6.9 |
-| 49 | Troubleshoot networking issues | Part VI §6.5 |
-| 50 | Troubleshoot storage issues | Part IV §4.5, §4.8, Part VI §6.8 |
-| 51 | Evaluate cluster and node logging | Part VI §6.3, §6.7 |
-| 52 | Monitor applications | Part VI §6.6 |
-| 53 | Manage container stdout and stderr logs | Part VI §6.2 |
-| 54 | Troubleshoot control plane and worker node failure | Part VI §6.3, §6.4 |
-
-**All 54 competencies are addressed in Parts I–VI.** Your `basic-k8s` notes will add *your* wording, *your* commands and
-*your* personal annotations on top of that, which is exactly the value they add over any textbook.
+| Cluster build | `pandeysp1/ubuntu-k8s/install.sh` then a manual `kubeadm init` | §"K8s Install Ubuntu" |
+| Pod CIDR | `10.244.0.0/16` | `--pod-network-cidr` |
+| Service CIDR | `10.96.0.0/16` | `--service-cidr` |
+| kubelet cert paths | `/etc/kubernetes/pki/` | implied by kubeadm |
+| User images | `quay.io/pandeysp/*` | every `image:` line |
+| Lab environment | KillerCoda, with a fixed set of exposed node ports | *"go to killercoda right side → select target port"* |
+| Shell alias | `k` = `kubectl` | `alias k=kubectl` |
+| Pre-flight checks | bypassed with `--ignore-preflight-errors=all` | the init command |
 
 ---
 
-*Send the `basic-k8s` file and this appendix fills in.*
+## C.3 Your notes, preserved verbatim
+
+**[Your note]** — the emptyDir task you set yourself:
+
+> *Task: Find a way to define size limit in emptydir type of storage*
+> *Doc of K8s*
+
+The answer is `emptyDir.sizeLimit`, documented in Part IV §4.2a.
+
+**[Your note]** — on the two-terminal CSR workflow:
+
+> *open a new tab*
+> *`cat pandey.csr | base64 -w 0`*
+> *copy the content to previous tab and paste in csr request field*
+
+**[Your note]** — the same, for extracting the issued certificate:
+
+> *copy the certificate and open a new tab*
+> *`echo <pastethe certificate> | base64 -d > pandey.crt`*
+> *switch back tyo previous tab*
+
+Both are captured, with the single-command alternative that avoids the copy-paste, in Part V §5.8a.
+
+**[Your note]** — on the blue/green cutover:
+
+> *go to version line and change the version from blue to green*
+> *save and exit*
+> *reload the page*
+
+**[Your note]** — on hostPath outliving the pod:
+
+> *even you have delete the pod the files will remian in the node /mnt directory*
+> *and if you spin your pod again and its created in the same node, the files will be present in the container*
+
+**[Your note]** — on the `stagging` label. Your `set-rs.yaml` selects on `app in (dev, stagging)` — a typo for
+`staging`, but it is spelled identically in the selector and in the labels, so the ReplicaSet adopts the pods anyway.
+That is the right lesson: Kubernetes does not care what a label *means*, only that the selector and the labels agree.
+
+**[Your note]** — the typos in your file that are worth naming, because they are exactly what muscle memory gets wrong:
+`docer exec` (missing `k`), `k config viewe`, `k desribe deploy mydep`, `k get ppods`, `k set image i`,
+`--country=IN` (openssl wants `-subj "/C=IN/ST=delhi/CN=pandey"`), `myclsuterbind`, `trainig-web-server`,
+`emphemeral`. Every one of them produces either a command-not-found error or — worse — a silently wrong object.
+Always `cat` a generated manifest before applying it.
+
+---
+
+## C.4 What this file does **not** contain
+
+So you know what to look for elsewhere:
+
+| Missing from `basic labs.txt` | Covered in |
+|---|---|
+| etcd backup/restore | Part I §1.9, Part VII §7.25 |
+| Cluster upgrades | Part I §1.11 |
+| Node lifecycle, drain/cordon | Part I §1.12 |
+| NetworkPolicy | Part III §3.4, Part VII §7.30 |
+| Ingress scenarios (TLS, canary, host routing) | Part VII §7.29 |
+| Probes (liveness/readiness) | Part II §2.8, Part VII §7.4 |
+| StatefulSets, Jobs, CronJobs | Part II §2.7 |
+| Troubleshooting | Part VI, Part VII §7.18–7.19 |
+| Mock exams | Part VII §7.26–7.28 |
+| Static pods | Part I §1.6 |
+| Custom schedulers | Part I §1.7 |
+| Metrics-server | Part I §1.8 |
+
+---
+
+## C.5 If you supply more CKA notes
+
+Any further `basic-k8s` material will be folded in the same way: transcribed verbatim into this appendix, with a
+`**CKA domain:**` and `**Merged into:**` line under each lab, and anything that is genuinely new added as a numbered
+section in the relevant Part. Appendix B's crosswalk is updated with the file, and the single-file deliverable is
+rebuilt and re-validated.

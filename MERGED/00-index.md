@@ -11,6 +11,7 @@
 | `mock-exam-1/2/3.sh`, `lightenin-labs/`, `practice-on-paper/`, `shells/`, `explore-services/`, `troubleshooting/`, `cluster-upgrade/`, `yaml/`, `configmap/` | Three mock exams, cluster-upgrade sequences, external-etcd drills, real troubleshooting logs, and reference manifest sets |
 | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | Your own `kubectl` and JSONPath cheat sheets — consolidated into Appendix D |
 | `last-try/scenarios-ingress.txt`, `last-try/senarisos-np.txt` | 5 Ingress and 5 NetworkPolicy scenario questions — worked in Part VII §7.29–7.30 |
+| `basic-k8s/basic-labs.txt` (1,300+ lines) | **Your CKA `basic-k8s` notes, now merged** — Docker, kubeadm init flags, `imagePullPolicy`, set-based selectors, `change-cause`, blue/green, MetalLB, ingress-nginx install, `volumeName`, RBAC-by-context-switching, Helm. See **Appendix C** for the intake map and **Appendix E** for Docker + Helm |
 
 **How to use it**
 
@@ -22,7 +23,9 @@
 4. Appendix B is a full **LFS258 → CKA crosswalk** so you can trace any repo file back to an exam objective.
 5. **Part VII is the exam-drill part** — 25 full CKA questions with your answers and explanations, three mock exams, and
    ten worked Ingress/NetworkPolicy scenarios. If you only read one part before sitting the exam, read that one.
-6. Appendix C is a reserved slot for your `basic-k8s` CKA notes (see the note at the end of this index).
+6. **Appendix C is the intake map for your `basic-k8s` notes** — every section of the file, where it landed, and the eleven
+   topics it contributed that were nowhere else in the repo. Appendix E holds the Docker and Helm material.
+7. Appendix C is the intake map for your merged `basic-k8s` / `basic labs.txt` notes.
 
 ---
 
@@ -51,8 +54,9 @@
 | [Part VII](07-exam-drills-and-mock-exams.md) | **Exam drills** — 25 worked questions + 3 mock exams + 10 scenarios | all domains | `last-try/questions.sh`, `mock-exam-1/2/3.sh`, `scenarios-ingress.txt`, `senarisos-np.txt` |
 | [Appendix A](90-appendix-a-image-catalog.md) | Your `quay.io/pandeysp/*` image catalog | — | 33 images / 41 tags |
 | [Appendix B](91-appendix-b-lfs258-cka-crosswalk.md) | Repo file → exam objective mapping | — | all 266 files |
-| [Appendix C](92-appendix-c-cka-notes.md) | Your `basic-k8s` CKA notes (reserved) | — | — |
+| [Appendix C](92-appendix-c-cka-notes.md) | Intake map for your `basic-k8s` / `basic labs.txt` | — | 27 sections mapped; 11 new topics merged |
 | [Appendix D](93-appendix-d-kubectl-jsonpath-reference.md) | `kubectl` + JSONPath quick reference | — | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` |
+| [Appendix E](94-appendix-e-docker-and-helm.md) | Docker and Helm foundations | — | `basic-k8s/basic-labs.txt` |
 
 ---
 
@@ -150,11 +154,23 @@ truncated. All of it is now merged:
 | `last-try/gb-trouble-shooting.sh` — NodeNotReady + cross-namespace DNS | Part VI §6.1, Part VII §7.18–7.19 |
 | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | **Appendix D** |
 
-## About your `basic-k8s` notes file
+## About your `basic-k8s` / `basic labs.txt` notes
 
-You mentioned an attached `basic-k8s` text file containing your CKA labs. That attachment has not arrived in this
-workspace either. Appendix C remains a reserved, pre-formatted slot for it: paste its text or drop the file into the repo
-and it will be folded in verbatim, with each lab cross-linked into the matching Part.
+Both arrived, and they are the same file. It is preserved verbatim at **`basic-k8s/basic-labs.txt`** in the repository.
 
-Nothing in this document is fabricated to stand in for it — every lab, command, manifest, log line and `[Your note]` in
-these pages came out of your own repository.
+It turned out to contain a good deal the rest of the repo did not — **eleven new topics**, including Docker and Helm
+(neither of which appeared anywhere else), `imagePullPolicy`, set-based selectors, the `change-cause` annotation,
+blue/green deployments, MetalLB, installing ingress-nginx yourself, `emptyDir` on the node, `volumeName` binding, and
+proving an RBAC permission by actually switching to the user's context.
+
+All of it is merged:
+
+* **Appendix C** is the intake map — every section of the file, where it landed, and what was new.
+* **Appendix E** holds Docker and Helm, which have no other home in a Kubernetes document.
+* The Kubernetes material went into the Parts where it belongs: **Part I §1.4a–1.4b** (kubeadm flags, `kubectl explain`),
+  **Part II §2.3a–2.3c** (`imagePullPolicy`, `change-cause`, blue/green), **Part II §2.9a** (set-based selectors),
+  **Part III §3.2a–3.2b** (MetalLB, ingress-nginx install), **Part IV §4.2a–4.2b** (`emptyDir`, `volumeName`),
+  **Part V §5.3a** (RBAC by context) and **§5.8a** (the full user-cert flow with `groups:` and `--embed-certs`).
+
+Nothing in this document is fabricated. Every lab, command, manifest, log line and `[Your note]` came out of your own
+repository.

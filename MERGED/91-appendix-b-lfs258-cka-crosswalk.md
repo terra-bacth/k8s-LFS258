@@ -339,7 +339,15 @@ The largest new find — 740 lines of fully worked CKA questions.
 
 ---
 
-## B.19 `my-certificate/`
+## B.19 `basic-k8s/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `basic-labs.txt` | **all domains** | 1,300+ lines of worked labs: Docker, kubeadm init flags, pods, imagePullPolicy, labels/selectors, ReplicaSets, Services + MetalLB, DaemonSets, namespaces, ResourceQuota, env/ConfigMap/Secrets, rolling update + `change-cause`, Recreate, **blue/green**, emptyDir/hostPath/PV+PVC, RBAC + context switching, user certificates, **ingress-nginx install**, hotel/tea/coffee Ingress, **Helm** | See Appendix C §C.1 for the full per-section landing map. New material: Parts I §1.4, II §2.3a–2.3c/§2.9a, III §3.2a–3.2b, IV §4.2a–4.2b, V §5.3a/§5.8a, Appendix E |
+
+---
+
+## B.20 `my-certificate/`
 
 | File | Domain | Topic | Covered in |
 |---|---|---|---|
@@ -347,7 +355,7 @@ The largest new find — 740 lines of fully worked CKA questions.
 
 ---
 
-## B.20 The ten things your repo documents that most candidates get wrong
+## B.21 The ten things your repo documents that most candidates get wrong
 
 These all appear as explicit **[Your note]** comments in your own lab files. They are worth more than any checklist.
 

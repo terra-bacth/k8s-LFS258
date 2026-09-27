@@ -11,6 +11,7 @@
 | `mock-exam-1/2/3.sh`, `lightenin-labs/`, `practice-on-paper/`, `shells/`, `explore-services/`, `troubleshooting/`, `cluster-upgrade/`, `yaml/`, `configmap/` | Three mock exams, cluster-upgrade sequences, external-etcd drills, real troubleshooting logs, and reference manifest sets |
 | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | Your own `kubectl` and JSONPath cheat sheets — consolidated into Appendix D |
 | `last-try/scenarios-ingress.txt`, `last-try/senarisos-np.txt` | 5 Ingress and 5 NetworkPolicy scenario questions — worked in Part VII §7.29–7.30 |
+| `basic-k8s/basic-labs.txt` (1,300+ lines) | **Your CKA `basic-k8s` notes, now merged** — Docker, kubeadm init flags, `imagePullPolicy`, set-based selectors, `change-cause`, blue/green, MetalLB, ingress-nginx install, `volumeName`, RBAC-by-context-switching, Helm. See **Appendix C** for the intake map and **Appendix E** for Docker + Helm |
 
 **How to use it**
 
@@ -22,7 +23,9 @@
 4. Appendix B is a full **LFS258 → CKA crosswalk** so you can trace any repo file back to an exam objective.
 5. **Part VII is the exam-drill part** — 25 full CKA questions with your answers and explanations, three mock exams, and
    ten worked Ingress/NetworkPolicy scenarios. If you only read one part before sitting the exam, read that one.
-6. Appendix C is a reserved slot for your `basic-k8s` CKA notes (see the note at the end of this index).
+6. **Appendix C is the intake map for your `basic-k8s` notes** — every section of the file, where it landed, and the eleven
+   topics it contributed that were nowhere else in the repo. Appendix E holds the Docker and Helm material.
+7. Appendix C is the intake map for your merged `basic-k8s` / `basic labs.txt` notes.
 
 ---
 
@@ -51,8 +54,9 @@
 | [Part VII](#part-vii--exam-drills--mock-exams) | **Exam drills** — 25 worked questions + 3 mock exams + 10 scenarios | all domains | `last-try/questions.sh`, `mock-exam-1/2/3.sh`, `scenarios-ingress.txt`, `senarisos-np.txt` |
 | [Appendix A](#appendix-a--quayiopandeysp-image-catalog) | Your `quay.io/pandeysp/*` image catalog | — | 33 images / 41 tags |
 | [Appendix B](#appendix-b--lfs258--cka-crosswalk) | Repo file → exam objective mapping | — | all 266 files |
-| [Appendix C](#appendix-c--your-basic-k8s-cka-notes) | Your `basic-k8s` CKA notes (reserved) | — | — |
+| [Appendix C](#appendix-c--your-basic-k8s--basic-labstxt-cka-notes) | Intake map for your `basic-k8s` / `basic labs.txt` | — | 27 sections mapped; 11 new topics merged |
 | [Appendix D](#appendix-d--kubectl-and-jsonpath-quick-reference) | `kubectl` + JSONPath quick reference | — | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` |
+| [Appendix E](#appendix-e--docker-and-helm-foundations) | Docker and Helm foundations | — | `basic-k8s/basic-labs.txt` |
 
 ---
 
@@ -150,14 +154,26 @@ truncated. All of it is now merged:
 | `last-try/gb-trouble-shooting.sh` — NodeNotReady + cross-namespace DNS | Part VI §6.1, Part VII §7.18–7.19 |
 | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | **Appendix D** |
 
-## About your `basic-k8s` notes file
+## About your `basic-k8s` / `basic labs.txt` notes
 
-You mentioned an attached `basic-k8s` text file containing your CKA labs. That attachment has not arrived in this
-workspace either. Appendix C remains a reserved, pre-formatted slot for it: paste its text or drop the file into the repo
-and it will be folded in verbatim, with each lab cross-linked into the matching Part.
+Both arrived, and they are the same file. It is preserved verbatim at **`basic-k8s/basic-labs.txt`** in the repository.
 
-Nothing in this document is fabricated to stand in for it — every lab, command, manifest, log line and `[Your note]` in
-these pages came out of your own repository.
+It turned out to contain a good deal the rest of the repo did not — **eleven new topics**, including Docker and Helm
+(neither of which appeared anywhere else), `imagePullPolicy`, set-based selectors, the `change-cause` annotation,
+blue/green deployments, MetalLB, installing ingress-nginx yourself, `emptyDir` on the node, `volumeName` binding, and
+proving an RBAC permission by actually switching to the user's context.
+
+All of it is merged:
+
+* **Appendix C** is the intake map — every section of the file, where it landed, and what was new.
+* **Appendix E** holds Docker and Helm, which have no other home in a Kubernetes document.
+* The Kubernetes material went into the Parts where it belongs: **Part I §1.4a–1.4b** (kubeadm flags, `kubectl explain`),
+  **Part II §2.3a–2.3c** (`imagePullPolicy`, `change-cause`, blue/green), **Part II §2.9a** (set-based selectors),
+  **Part III §3.2a–3.2b** (MetalLB, ingress-nginx install), **Part IV §4.2a–4.2b** (`emptyDir`, `volumeName`),
+  **Part V §5.3a** (RBAC by context) and **§5.8a** (the full user-cert flow with `groups:` and `--embed-certs`).
+
+Nothing in this document is fabricated. Every lab, command, manifest, log line and `[Your note]` came out of your own
+repository.
 
 \pagebreak
 
@@ -432,6 +448,111 @@ sudo kubeadm join <CP_IP>:6443 --token <token> \
 # 7. Network plugin (see 1.5)
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
+
+### 4a. The `kubeadm init` flags your `basic-k8s` lab used
+
+`basic-k8s/basic-labs.txt` builds its cluster with the `pandeysp1/ubuntu-k8s` installer script and then runs
+`kubeadm init` by hand. The exact invocation, with every flag explained:
+
+```bash
+sudo -i
+apt-get update
+wget https://raw.githubusercontent.com/pandeysp1/ubuntu-k8s/refs/heads/main/install.sh
+chmod +x install.sh
+
+kubeadm init \
+  --pod-network-cidr '10.244.0.0/16' \
+  --service-cidr '10.96.0.0/16' \
+  --ignore-preflight-errors=all \
+  --skip-token-print
+
+./install.sh
+
+kubectl get nodes
+```
+
+| Flag | What it does | When you need it |
+|---|---|---|
+| `--pod-network-cidr` | The range pods get IPs from. flannel's default is `10.244.0.0/16`; calico's is `192.168.0.0/16`. | **Always** for flannel — the DaemonSet reads it from the config |
+| `--service-cidr` | The range Services' virtual IPs come from. Default `10.96.0.0/12`. | Only if you want a non-default range |
+| `--ignore-preflight-errors=all` | Skips **every** pre-flight check — swap, cgroups, ports, kernel modules. | When preflight fails for an environmental reason you cannot fix (common in a lab VM). It hides real problems, so use it knowingly |
+| `--skip-token-print` | Does not print the `kubeadm join` command to stdout | When you plan to create the token later with `kubeadm token create --print-join-command` |
+
+```bash
+# If you skipped the join command, get it back
+kubeadm token create --print-join-command
+kubeadm token list
+```
+
+The installer script also sets up the `k` alias, which every command in your `basic-k8s` lab relies on:
+
+```bash
+alias k=kubectl
+echo "alias k=kubectl" >> ~/.bashrc
+```
+
+> **Exam note** — `--pod-network-cidr` must match the CNI you are about to install. flannel wants `10.244.0.0/16`;
+> calico wants `192.168.0.0/16`. Passing the wrong one means pods come up `NotReady` with
+> `NetworkPluginNotReady` / `cni plugin not initialized`, and the symptom looks like a CNI bug rather than a flag
+> mismatch. See Part I §1.5.
+
+### 4b. `kubectl explain` — the in-terminal API reference
+
+`basic-k8s` uses `k explain` throughout, and it is the single most under-used command on the exam. With no browser
+available, it replaces the entire API documentation.
+
+```bash
+k explain pod
+k explain pod.metadata
+k explain pod.spec
+k explain pod.spec.containers
+k explain pod.spec.containers.env
+k explain pod.spec.containers.env.valueFrom
+k explain pod.spec.containers.resources
+k explain pod.spec.containers.resources.limits
+k explain pod.spec.containers.volumeMounts
+k explain pod.spec.volumes
+k explain pod.spec.volumes.emptyDir
+k explain pod.spec.volumes.persistentVolumeClaim
+k explain deployment
+k explain deployment.spec.strategy
+k explain deployment.spec.strategy.rollingUpdate
+k explain deployment.spec.template.spec.containers
+k explain service.spec.ports
+k explain pvc.spec
+k explain role.rules
+k explain csr.spec
+```
+
+The output is a field reference with the type, whether it is required, and a description:
+
+```bash
+$ k explain pod.spec.containers.env.valueFrom
+KIND:     Pod
+VERSION:  v1
+
+FIELD:    valueFrom <EnvVarSource>
+
+DESCRIPTION:
+     Source for the environment variable's value. Cannot be used if value is not
+     empty.
+
+FIELDS:
+   configMapKeyRef  <ConfigMapKeySelector>
+   fieldRef         <ObjectFieldSelector>
+   resourceFieldRef <ResourceFieldSelector>
+   secretKeyRef     <SecretKeySelector>
+```
+
+```bash
+# --recursive prints the whole subtree — the fastest way to learn a schema
+k explain deployment --recursive | less
+k explain deployment --recursive | grep -A2 strategy
+```
+
+> **Exam note** — when a question asks for a field you are not sure exists (`lifecycle.preStop`? `readinessProbe`?
+> `topologySpreadConstraints`?), run `k explain <resource> --recursive | grep <guess>` before writing the manifest.
+> It costs five seconds and eliminates the "invalid field" rejection entirely.
 
 ### Stacked vs external etcd (this is a favourite CKA question)
 
@@ -1777,6 +1898,244 @@ window, but required when two versions cannot coexist (e.g. a schema migration o
 
 ---
 
+### 3b. `change-cause`, `rollout history` and `rollout undo --to-revision`
+
+`basic-k8s` walks the full revision lifecycle on a real Deployment, which is the part most people skip.
+
+```bash
+vi depl.yaml
+```
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydep
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/production:v1
+  selector:
+    matchLabels:
+      app: webapp
+```
+
+```bash
+k create -f depl.yaml
+k get deploy
+k get pods
+k describe deploy mydep
+k get rs
+# NAME               DESIRED   CURRENT   READY   AGE
+# mydep-56f6f5d5d5   3         3         3       40s
+
+k get rs mydep-56f6f5d5d5
+k describe rs mydep-56f6f5d5d5
+k describe pod mydep-56f6f5d5d5-4dvct
+```
+
+**Step 1 — expose it, so you can see the version change from outside:**
+
+```bash
+k expose deploy mydep --name=dep-svc --target-port=80 --port=80 --type=LoadBalancer
+k get svc
+# NAME      TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)        AGE
+# dep-svc   LoadBalancer   10.106.26.186  172.25.230.10   80:31234/TCP   10s
+
+curl 10.106.26.186
+```
+
+**Step 2 — update the image, which starts a new revision:**
+
+```bash
+k set image deploy mydep con1=quay.io/pandeysp/production:v2
+#                      ^^^^ the CONTAINER name, not the deployment name
+
+k get svc
+k get rs
+# NAME               DESIRED   CURRENT   READY   AGE
+# mydep-56f6f5d5d5   0         0         0       90s     ← scaled to zero
+# mydep-7d9f8c6b4q   3         3         3       10s     ← the new ReplicaSet
+
+curl 10.106.26.186          # now serving v2
+```
+
+**Step 3 — annotate the revision with a change cause.** Without this, `rollout history` shows a bare
+`REVISION  CHANGE-CAUSE` with nothing in it:
+
+```bash
+kubectl annotate deploy mydep kubernetes.io/change-cause="This is version 2"
+
+k rollout history deploy mydep
+# deployment.apps/mydep
+# REVISION  CHANGE-CAUSE
+# 1         <none>
+# 2         This is version 2
+```
+
+> **Exam note** — the annotation must be applied **after** the change you want to label, and it applies to the revision
+> that is current at that moment. There is no way to retro-label an older revision. The annotation is
+> `kubernetes.io/change-cause` and it lives in `metadata.annotations` of the **Deployment's pod template**.
+
+**Step 4 — roll back:**
+
+```bash
+k rollout undo deploy mydep                  # back to the previous revision (2 → 1)
+k get pods
+curl 10.106.26.186                          # serving v1 again
+
+k rollout undo deploy mydep                  # and forward again
+k rollout undo deploy mydep --to-revision=1  # or jump straight to a specific revision
+curl 10.106.26.186
+```
+
+```bash
+# The supporting commands
+k rollout status deploy mydep               # block until the rollout completes
+k rollout history deploy mydep --revision=2 # the full template of one revision
+k rollout restart deploy mydep              # rolling restart, no image change
+k rollout pause deploy mydep                # stop the rollout midway
+k rollout resume deploy mydep
+```
+
+**Step 5 — scale and autoscale:**
+
+```bash
+k scale deploy mydep --replicas=5
+k scale deploy mydep --replicas=2
+k autoscale deploy mydep --min=2 --max=8 --cpu-percent=80
+k get hpa
+```
+
+> **Exam note** — `kubectl rollout undo` without `--to-revision` goes to the **immediately previous** revision, not to
+> revision 1. If you have rolled back and forth three times, "previous" is not where you think it is. Always pass
+> `--to-revision=N` when the question names a specific version.
+
+### 3c. Blue/green deployment — a Service selector switch
+
+`basic-k8s` implements blue/green with **two Deployments and one Service**, and the cutover is a single edit to the
+Service's selector. This is the cleanest possible version of the pattern.
+
+```yaml
+# blue.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bluedep
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: web
+        version: blue
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/production:v1
+  selector:
+    matchLabels:
+      app: web
+      version: blue
+```
+
+```yaml
+# green.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greendep
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: web
+        version: green
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/production:v2
+  selector:
+    matchLabels:
+      app: web
+      version: green
+```
+
+```yaml
+# bgsvc.yaml — the switch
+apiVersion: v1
+kind: Service
+metadata:
+  name: bgsvc
+spec:
+  type: LoadBalancer
+  ports:
+    - targetPort: 80
+      port: 80
+  selector:
+    version: blue
+```
+
+```bash
+k create -f blue.yaml
+k create -f green.yaml
+k create -f bgsvc.yaml
+
+k get svc
+k get pods --show-labels -o wide
+# NAME                        READY   STATUS    LABELS                        NODE
+# bluedep-xxx-aaaaa           1/1     Running   app=web,version=blue,...      node01
+# bluedep-xxx-bbbbb           1/1     Running   app=web,version=blue,...      node02
+# greendep-yyy-aaaaa          1/1     Running   app=web,version=green,...     node01
+# greendep-yyy-bbbbb          1/1     Running   app=web,version=green,...     node02
+
+curl 10.103.120.165           # blue (v1)
+```
+
+**The cutover.** Both Deployments are already running and warm; you are only changing which one the Service points at.
+
+```bash
+k edit svc bgsvc
+# go to the version line and change the version from blue to green
+#   selector:
+#     version: green
+# save and exit
+
+curl 10.103.120.165           # green (v2) — immediately
+```
+
+**Rolling back is the same edit in reverse** — no new rollout, no downtime, and the old version's pods were never
+touched:
+
+```bash
+k edit svc bgsvc
+curl 10.103.120.165
+```
+
+**Why the Service selector is only `version:` and not `app: web`.** Because `app: web` matches **both** Deployments'
+pods, so the Service would load-balance across blue and green at the same time — exactly what you do not want. The
+selector must discriminate.
+
+**Blue/green vs rolling update vs canary:**
+
+| | Mechanism | Downtime | Rollback | Cost |
+|---|---|---|---|---|
+| **Rolling update** (default) | One Deployment, new ReplicaSet scales up as the old scales down | none | `rollout undo` | 1× resources |
+| **Recreate** | One Deployment, `strategy: Recreate` — old pods deleted before new ones start | **yes** | `rollout undo` | 1× resources |
+| **Blue/green** | Two Deployments, switch the Service selector | none | re-edit the Service | **2× resources** |
+| **Canary** | Two Deployments/Ingresses, weighted split | none | set the weight to 0 | 1× + a sliver |
+
+> **Exam note** — blue/green is not a Kubernetes object; it is a *pattern* built from a Deployment, a Service and a
+> label convention. The exam asks for the pattern, so what is graded is: two Deployments, a shared Service, and a
+> selector that discriminates on the version label. See Part VII §7.29 scenario 5 for the canary variant.
+
 ## 2.4 Multi-container pods — `Deployments/multi-container-pod.yaml`, `Labs/18-side-car.yaml`, `Deployments/sloution.yaml`
 
 Containers in a pod share the network namespace (same IP, `localhost` works) and can share volumes. They are scheduled
@@ -2239,6 +2598,99 @@ mutable fields, and no arbitrary JSONPath.**
 
 ---
 
+### 3a. `imagePullPolicy` — Always, IfNotPresent, Never
+
+`basic-k8s` drills all three, with `crictl images` used to prove the difference on the node.
+
+```bash
+k describe pod pod-demo-new | grep -i pull
+#     Image:          quay.io/pandeysp/nginxdemo
+#     Image ID:       quay.io/pandeysp/nginxdemo@sha256:...
+#   Image Pull Policy: IfNotPresent
+
+crictl images
+# IMAGE                                      TAG     IMAGE ID        SIZE
+# quay.io/pandeysp/nginxdemo                latest  a1b2c3d4e5f6    142MB
+```
+
+**The three values, and when each one applies:**
+
+```yaml
+# 1. Always — pull on every pod start, even if the image is already on the node
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-policy1
+spec:
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/nginx
+      imagePullPolicy: Always
+```
+
+```yaml
+# 2. IfNotPresent — use the local copy if it exists (the default when the tag is NOT :latest)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-policy2
+spec:
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/nginx
+      imagePullPolicy: IfNotPresent
+```
+
+```yaml
+# 3. Never — never contact a registry; the image must already be on the node
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-policy3
+spec:
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/mysql
+      imagePullPolicy: Never
+```
+
+**The default rule, which is the actual exam question:**
+
+| Image tag | Default `imagePullPolicy` |
+|---|---|
+| `nginx` or `nginx:latest` | `Always` |
+| `nginx:1.25` or any explicit tag | `IfNotPresent` |
+| `some/image@sha256:abc123...` (digest) | `IfNotPresent` |
+
+```bash
+# Prove the third one fails when the image is absent
+k create -f pod-policy1.yaml
+k describe pod pod-policy3 | tail -6
+# Events:
+#   Warning  Failed  ... Failed to pull image "quay.io/pandeysp/mysql":
+#   rpc error: code = Unknown desc = failed to pull and unpack image ...
+#   Normal   BackOff  ... Back-off pulling image "quay.io/pandeysp/mysql"
+#   Warning  Failed  ... Error: ErrImageNeverPull
+```
+
+`ErrImageNeverPull` is the signature of `imagePullPolicy: Never` with no local image. `ImagePullBackOff` is the
+signature of `Always`/`IfNotPresent` with a bad name, a bad tag, or no registry credentials.
+
+**Removing the policy to see the default.** `basic-k8s` deletes and recreates the pod with the field removed, which is
+the cleanest demonstration:
+
+```bash
+k delete -f pod-policy.yaml
+vi pod-policy.yaml          # remove the imagePullPolicy line
+k create -f pod-policy.yaml
+k get pods
+k describe pod pod-policy2 | grep "Pull Policy"
+```
+
+> **Exam note** — the CKA asks this in three forms: (1) "set the pull policy to IfNotPresent", (2) "why is the pod in
+> `ErrImageNeverPull`", and (3) "the image is `nginx:latest` — what is the pull policy". The third one catches people
+> who assume `IfNotPresent` is always the default. It is not: `:latest` defaults to `Always`.
+
 ## 2.7 DaemonSets — Lab `12-ds.sh`
 
 A DaemonSet runs **exactly one pod per node**, including nodes added later. Use it for log collectors, node exporters,
@@ -2451,6 +2903,107 @@ kubectl annotate pod nginx description-             # remove
 > **Exam note** — without `--overwrite`, `kubectl label` fails if the key exists. This trips people up in timed exams.
 
 ---
+
+### 9a. Set-based selectors — `in`, `notin`, `Exists`
+
+`basic-k8s` drills the **set-based** selector syntax, which is the half of label matching most candidates skip.
+
+```bash
+# Equality-based — one key, one value
+k get pods --show-labels
+k label pod pod3 env- new-                       # remove two labels at once
+k get pods --selector env=prod
+k get pods --selector env!=prod
+
+# Set-based — one key, a SET of values
+k label pod pod-demo-new test=new
+k get pods --selector 'env in (prod,dev)'
+k get pods --selector 'env notin (prod,dev)'
+k get pods --selector 'test in (new,dev)'
+k get pods --selector 'env notin (*)'            # every value, including none
+k get pods --selector 'env notin ()'             # ??? see below
+k get pods --selector 'env in ()'                # matches nothing
+```
+
+| Selector | Matches |
+|---|---|
+| `env=prod` | pods where `env` is exactly `prod` |
+| `env!=prod` | pods where `env` exists and is **not** `prod` (a pod with no `env` label is **not** matched) |
+| `env in (prod,dev)` | pods where `env` is `prod` **or** `dev` |
+| `env notin (prod,dev)` | pods where `env` exists and is neither `prod` nor `dev` |
+| `env` | pods where `env` exists, **any** value — the `Exists` form |
+| `!env` | pods where `env` does **not** exist |
+| `env notin (*)` | every pod that has an `env` label, regardless of value |
+| `env in ()` | **nothing** — an empty set matches nothing |
+
+**The same three operators exist in a ReplicaSet selector**, via `matchExpressions`:
+
+```yaml
+# basic-k8s/set-rs.yaml — a set-based ReplicaSet selector
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs-app-setbased
+spec:
+  replicas: 3
+  selector:
+    matchExpressions:
+      - key: "app"
+        operator: "In"
+        values:
+          - "dev"
+          - "stagging"
+  template:
+    metadata:
+      labels:
+        app: dev
+    spec:
+      containers:
+        - name: con1
+          image: quay.io/pandeysp/nginxdemo
+```
+
+```yaml
+# The other two operators, for completeness
+  selector:
+    matchExpressions:
+      - key: app
+        operator: NotIn
+        values: ["dev", "stagging"]
+      - key: tier
+        operator: Exists            # no values: list
+      - key: legacy
+        operator: DoesNotExist     # no values: list
+```
+
+**Why this matters for the ReplicaSet.** A set-based selector makes the ReplicaSet adopt **any** pod matching
+*either* value, which `basic-k8s` demonstrates by creating pods one at a time and watching the count:
+
+```bash
+k create -f set-rs.yaml
+k get rs
+# NAME               DESIRED   CURRENT   READY   AGE
+# rs-app-setbased    3         0         0       5s
+
+k run pod3 --image quay.io/pandeysp/nginxdemo -l app=dev
+k run pod4 --image quay.io/pandeysp/nginxdemo -l app=dev
+k get rs
+# rs-app-setbased    3         2         2       30s      ← adopted both
+
+k run pod6 --image quay.io/pandeysp/nginxdemo -l app=stagging
+k get rs
+# rs-app-setbased    3         3         3       40s      ← adopted a pod with the OTHER value
+
+k describe rs rs-app-setbased | grep -A5 "Selector"
+# Selector: app in (dev,stagging)
+```
+
+Note `stagging` — a typo for `staging` that is consistent between the selector and the labels, so it works. That is a
+useful reminder that Kubernetes does not care what the value *means*, only that the selector and the labels agree.
+
+> **Exam note** — `matchLabels` and `matchExpressions` can be combined in one selector, and they are **AND**-ed. Also
+> remember: the selector is **immutable** after creation on a Deployment. On a ReplicaSet it is effectively immutable
+> too (changing it orphans the existing pods).
 
 ## 2.10 Resource requests, limits and QoS — Lab `11-resource-limits.sh`
 
@@ -3296,6 +3849,207 @@ kubectl -n kube-system logs -l k8s-app=kube-dns --tail=20
 
 ---
 
+### 2a. MetalLB — making `LoadBalancer` actually work on bare metal
+
+Everything in §3.2 assumed a cloud provider. On a bare-metal or VM cluster a `LoadBalancer` Service sits at
+`EXTERNAL-IP <pending>` forever, because nothing in Kubernetes implements the load-balancer API. **MetalLB** is that
+implementation, and `basic-k8s` installs it in two steps.
+
+```bash
+k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+
+k get ns
+# NAME              STATUS   AGE
+# metallb-system    Active   20s
+
+k get pod,svc -n metallb-system
+# NAME                              READY   STATUS    RESTARTS   AGE
+# pod/controller-7d4b6c5f9-xxxxx    1/1     Running   0          18s
+# pod/speaker-abcde                 1/1     Running   0          18s      ← one per node, a DaemonSet
+
+# NAME                  TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+# service/webhook-service  ClusterIP   10.98.234.11   <none>        443/TCP   18s
+```
+
+**Step 2 — the IPAddressPool.** Until you define a pool, MetalLB has no addresses to hand out and the Service stays
+`pending`:
+
+```yaml
+# ip-pool.yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 172.25.230.10 - 172.25.230.30
+```
+
+```bash
+k create -f ip-pool.yaml
+k get ipaddresspool -n metallb-system
+k get svc
+# NAME      TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE
+# lb-ecom   LoadBalancer   10.98.78.195   172.25.230.10    80:32064/TCP   2m
+
+curl 172.25.230.10
+```
+
+**The address must be routable to a node.** MetalLB announces the pool addresses over ARP (layer 2 mode) or BGP
+(layer 3). In L2 mode, which is what `metallb-native.yaml` defaults to, the address has to be on the same subnet as
+the nodes so that ARP replies reach them.
+
+```bash
+# Verify MetalLB is really announcing
+k logs -n metallb-system -l app=metallb,component=speaker --tail=20
+# {"level":"info","msg":"service announcer","event":"startAdvertising","ip":"172.25.230.10",...}
+```
+
+**The full LoadBalancer lab, from `basic-k8s`:**
+
+```bash
+vi ecom.yaml
+k create -f ecom.yaml        # a 2-replica ReplicaSet of quay.io/pandeysp/mywebapp
+
+vi lb.yaml
+k create -f lb.yaml
+k get svc                   # EXTERNAL-IP <pending> — MetalLB not installed yet
+
+k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+k get pods -n metallb-system
+
+vi ip-pool.yaml
+k create -f ip-pool.yaml
+
+k get svc                   # EXTERNAL-IP 172.25.230.10
+curl 172.25.230.10
+```
+
+> **Exam note** — MetalLB is **not** on the CKA syllabus and is not installed on the exam cluster. What is worth
+> knowing: (1) a `LoadBalancer` Service is just a NodePort Service plus a controller that programs the external
+> address; (2) the NodePort is still allocated underneath, which is why the `PORT(S)` column shows
+> `80:32064/TCP`; (3) if a question says "expose the application externally" on a bare-metal cluster, the answer is
+> **NodePort** or **Ingress**, not LoadBalancer.
+
+### 2b. Installing the ingress controller yourself — `basic-k8s`'s route
+
+Part III §3.5 assumes an ingress controller is already present, because that is what the exam gives you. `basic-k8s`
+installs one from scratch, and the order matters: **MetalLB first, then ingress-nginx**, because the controller's
+Service is itself a `LoadBalancer` and needs something to allocate its address.
+
+```bash
+# 1. MetalLB + a pool (see §2a above)
+k apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.3/config/manifests/metallb-native.yaml
+k create -f ippool.yaml
+
+# 2. Clone the ingress-nginx repo and apply the cloud provider manifest
+git clone https://github.com/kubernetes/ingress-nginx.git
+ls -ltrh
+
+k apply -f ingress-nginx/deploy/static/provider/cloud/deploy.yaml
+
+k get ns
+# NAME           STATUS   AGE
+# ingress-nginx  Active   30s
+
+k get pod,svc -n ingress-nginx
+# NAME                                         READY   STATUS     RESTARTS   AGE
+# pod/ingress-nginx-admission-create-xxxxx     0/1     Completed  0          25s
+# pod/ingress-nginx-admission-patch-xxxxx      0/1     Completed  0          25s
+# pod/ingress-nginx-controller-xxxxx           1/1     Running    0          25s
+#
+# NAME                                         TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)
+# service/ingress-nginx-controller             LoadBalancer   10.104.7.211   172.25.230.10    80:31234/TCP,443:32065/TCP
+```
+
+**The two admission Jobs.** Those `Completed` pods are not leftovers — they are the admission webhook's setup and teardown.
+See Part III §3.5 for why they exist and what their failure looks like.
+
+**The three backends and one Ingress with three paths** — the `basic-k8s` version of the hotel/tea/coffee lab:
+
+```bash
+k create deploy hotel  --image=quay.io/pandeysp/hotel   --replicas=2
+# Alt image: quay.io/pandeysp/portfolio:latest
+k create deploy tea    --image=quay.io/pandeysp/tea     --replicas=2
+# Alt image: quay.io/pandeysp/tea:latest
+k create deploy coffee --image=quay.io/pandeysp/coffee  --replicas=2
+# Alt image: quay.io/pandeysp/coffee:latest
+
+k get deploy
+k expose deploy tea    --target-port=80 --port=80
+k expose deploy coffee --target-port=80 --port=80
+k expose deploy hotel  --target-port=80 --port=80
+k get svc
+```
+
+```yaml
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tour-ing
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /hotel
+            pathType: Prefix
+            backend:
+              service:
+                name: hotel
+                port:
+                  number: 80
+          - path: /tea
+            pathType: Prefix
+            backend:
+              service:
+                name: tea
+                port:
+                  number: 80
+          - path: /coffee
+            pathType: Prefix
+            backend:
+              service:
+                name: coffee
+                port:
+                  number: 80
+```
+
+```bash
+k create -f ingress.yaml
+k get ing
+k get ing -w
+
+curl 172.25.230.10/tea
+curl 172.25.230.10/coffee
+curl 172.25.230.10/hotel
+```
+
+**Why `rewrite-target: /` is needed here.** The three Services expect `/`, not `/tea`. Without the annotation, a request
+for `/tea` is forwarded to the `tea` Service as `GET /tea`, which nginx answers with `404`. The annotation rewrites the
+URI to `/` before proxying. See Part III §3.5 "Rewrite — the annotation that catches everyone".
+
+**Testing from a browser in KillerCoda.** Your note:
+
+> *go to killercoda right side → select target port → Access port → enter the 30003*
+
+KillerCoda (and most lab environments) only expose a fixed set of ports on the node. If the Service's `nodePort` is not
+one of them, `curl` from inside the cluster works but the browser cannot reach it. Either pick a `nodePort` that the
+environment exposes, or use `kubectl port-forward`:
+
+```bash
+k port-forward svc/node-svc 8080:80
+# then browse to localhost:8080
+```
+
+> **Exam note** — when an Ingress returns `404` but `kubectl get ing` shows an `ADDRESS`, the three causes in order
+> are: (1) the path does not match because `pathType` is wrong (`Exact` vs `Prefix`), (2) the rewrite annotation is
+> missing, (3) the Service has no endpoints. Check `kubectl get endpoints <svc>` before anything else.
+
 ## 3.3 kube-proxy — how the virtual IP actually works
 
 `ClusterIP` is not bound to any interface. It exists only as iptables/IPVS rules in the node's netfilter.
@@ -4101,6 +4855,245 @@ volumes:
 
 ---
 
+### 2a. `emptyDir` — proving where the data actually lives
+
+`basic-k8s` walks the `emptyDir` volume all the way down to the node's filesystem, which is the only way to really
+understand what "ephemeral" means.
+
+```yaml
+# emptydir.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  volumes:
+    - name: emphemeral
+      emptyDir: {}
+  containers:
+    - name: c1
+      image: quay.io/pandeysp/nginxdemo
+      # Alt image: quay.io/pandeysp/nginxdemo:latest
+      volumeMounts:
+        - name: emphemeral
+          mountPath: /mydata
+```
+
+```bash
+k create -f emptydir.yaml
+k get pods
+k get pods -o wide
+k describe pod mypod
+
+k exec -it mypod -- sh
+/ # cd mydata
+/mydata # echo "Hello from containers" > file1
+/mydata # cat file1
+Hello from containers
+/mydata # exit
+```
+
+**Now open the node the pod is running on and find the same file:**
+
+```bash
+open the worker node where pod is running
+
+find / -name file1
+# /var/lib/kubelet/pods/6f2b1c8e-.../volumes/kubernetes.io~empty-dir/emphemeral/file1
+
+cd /var/lib/kubelet/pods/6f2b1c8e-.../volumes/kubernetes.io~empty-dir/emphemeral
+cat file1
+# Hello from containers
+
+echo "Hello from node" > file2
+```
+
+**And prove the write from the node is visible in the container:**
+
+```bash
+switch back to master and confirm the file is created and seen in container
+
+k exec -it mypod -- sh
+/mydata # cat file2
+Hello from node
+/mydata # exit
+```
+
+**The path, decoded:**
+
+```
+/var/lib/kubelet/pods/<POD-UID>/volumes/kubernetes.io~empty-dir/<VOLUME-NAME>/
+                    ^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^
+                    the pod's UID,      the volume type,      the name from
+                    not its name        with ~ for the /      spec.volumes[].name
+```
+
+```bash
+# Get the UID without guessing
+k get pod mypod -o jsonpath='{.metadata.uid}'
+# 6f2b1c8e-3a4b-4c5d-9e8f-1234567890ab
+```
+
+**The point of the exercise — `emptyDir` dies with the pod:**
+
+```bash
+k delete pod mypod
+you can open the worker node and see the storage is deleted along with pod
+```
+
+Recreate the pod and the directory is new and empty. That is what distinguishes `emptyDir` from `hostPath` (§4.8) and
+from a PVC (§4.2).
+
+**Your task, from `basic-k8s`, verbatim:**
+
+> *Task: Find a way to define size limit in emptydir type of storage*
+
+The answer is `emptyDir.sizeLimit`, and it is the answer to a real exam question:
+
+```yaml
+spec:
+  volumes:
+    - name: emphemeral
+      emptyDir:
+        sizeLimit: 500Mi        # the kubelet evicts the pod if the volume exceeds this
+```
+
+```yaml
+# The other emptyDir field, for scratch space on a specific medium
+    - name: cache
+      emptyDir:
+        medium: Memory          # a tmpfs — counts against the container's memory limit
+        sizeLimit: 128Mi
+```
+
+> **Exam note** — `medium: Memory` makes the `emptyDir` a `tmpfs`. It is RAM-backed, it is always empty at start, and
+> **it counts against the container's memory limit** rather than ephemeral-storage. `sizeLimit` works with both media.
+> On the CKA this shows up as "give the container a scratch volume capped at 256Mi".
+
+### 2b. Explicit binding with `volumeName`, and `ReadWriteMany`
+
+`basic-k8s` binds its PVC to a specific PV by name rather than letting the binder choose, and it uses
+`ReadWriteMany` — the access mode that lets **many** pods on **many** nodes mount the volume at once.
+
+```yaml
+# pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+spec:
+  storageClassName: local-path
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /mnt
+```
+
+```yaml
+# pvc.yaml — note volumeName
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: pv1
+```
+
+```yaml
+# pvpod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pv-pod
+spec:
+  volumes:
+    - name: persist
+      persistentVolumeClaim:
+        claimName: pvc1
+  containers:
+    - name: con1
+      image: quay.io/pandeysp/nginxdemo
+      # Alt image: quay.io/pandeysp/nginxdemo:latest
+      volumeMounts:
+        - name: persist
+          mountPath: /mycon
+```
+
+```bash
+k create -f pv.yaml -f pvc.yaml
+k get pv,pvc
+# NAME     CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM
+# pv1      1Gi        RWX            Retain           Bound    default/pvc1
+#
+# NAME     STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+# pvc1     Bound    pv1      1Gi        RWX            local-path     5s
+
+k create -f pvpod.yaml
+k get pods
+k describe pod pv-pod
+k describe pv pv1
+k describe pvc pvc1
+```
+
+**`volumeName` pins the binding.** Without it, the binder picks any PV whose capacity and access modes satisfy the
+request. With it, the PVC binds to **that** PV or stays `Pending`:
+
+```bash
+k get pvc pvc1
+# NAME   STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+# pvc1   Bound    pv1      1Gi        RWX            local-path     5s
+
+# If pv1 were already claimed, or the access modes disagreed:
+k describe pvc pvc1 | tail -4
+# Events:
+#   Warning  ProvisioningFailed  ... no volumes available to bind
+```
+
+**The data-survives-the-pod proof.** Delete the pod, recreate it, and the file is still there — because the PV, not the
+pod, owns the data:
+
+```bash
+k exec -it pv-pod -- sh
+/mycon # echo "Hello from containers" > newfile1
+/mycon # cat newfile1
+Hello from containers
+/mycon # exit
+
+k get pods -o wide
+k delete -f pvpod.yaml
+k create -f pvpod.yaml
+k get pods -o wide
+
+k exec -it pv-pod -- sh
+/mycon # cat newfile1
+Hello from containers          ← still here
+/mycon # exit
+
+k get pv
+k get pv,pvc
+```
+
+**`ReadWriteMany` vs the other two modes:**
+
+| Access mode | Short | Mounted by | Typical backend |
+|---|---|---|---|
+| `ReadWriteOnce` | `RWO` | one node, read-write | block storage (EBS, GCE PD, hostPath on one node) |
+| `ReadOnlyMany` | `ROX` | many nodes, read-only | read-only shares |
+| `ReadWriteMany` | `RWX` | **many nodes, read-write** | NFS, CephFS, GlusterFS |
+
+> **Exam note** — `hostPath` on a single node can *advertise* `RWX`, as `basic-k8s` does, but the pods still have to
+> land on the **same node** for it to mean anything — a pod on node02 mounting node01's `/mnt` sees nothing. On a
+> multi-node cluster, real `RWX` needs a shared filesystem. That is why the exam's `RWX` questions are always NFS or
+> `storageClassName: no-provisioner` with a shared backend.
+
 ## 4.3 Access modes
 
 | Mode | Abbrev | Meaning | Typical backend |
@@ -4832,6 +5825,161 @@ kubectl create rolebinding read-pods --clusterrole=view --serviceaccount=default
 > Using the wrong flag produces a binding whose `roleRef.kind` doesn't match and the permissions silently don't apply.
 
 ---
+
+### 3a. Proving a permission by actually using it
+
+`basic-k8s` does not stop at `kubectl auth can-i`. It creates a **context for the new user** and switches to it, which is
+the only way to demonstrate a permission the way the exam grades it.
+
+**Step 1 — a Role, bound to a ServiceAccount, verified with `--as`:**
+
+```bash
+k api-resources
+k api-resources --namespaced=true
+k api-resources --namespaced=false
+
+k get roles
+k create role myrole --verb=get,list --resource=pod,svc
+k get roles
+k describe role myrole
+# Name:         myrole
+# Labels:       <none>
+# Annotations:  <none>
+# PolicyRule:
+#   Resources  Non-Resource URLs  Resource Names  Verbs
+#   ---------  -----------------  --------------  -----
+#   pods       []                 []              [get list]
+#   svc        []                 []              [get list]
+
+k run pod1 --image quay.io/pandeysp/nginxdemo
+k describe pod pod1
+
+k create rolebinding sabind --role=myrole --serviceaccount=default:default
+k get rolebinding sabind
+k describe role myrole
+k describe rolebinding sabind
+
+# Verify WITHOUT switching
+k auth can-i get cm  --as=system:serviceaccount:default:default
+# no
+k auth can-i get pod --as=system:serviceaccount:default:default
+# yes
+k auth can-i get pv  --as=system:serviceaccount:default:default
+# no
+k auth can-i create pod --as=system:serviceaccount:default:default
+# no
+```
+
+Note the two negative results and why they are correct:
+
+* `get cm` → **no**, because the Role only lists `pod,svc`
+* `get pv` → **no**, because a Role is **namespaced** and `persistentvolumes` is cluster-scoped
+
+**Step 2 — a second ServiceAccount, with a different Role, to show the bindings are independent:**
+
+```bash
+k get sa
+k describe sa default
+k create sa auto
+k get sa
+# NAME      SECRETS   AGE
+# auto      0         2s
+# default   0         22d
+
+k create role myrole1 --verb=create --resource=pod,rs
+k get roles
+k create rolebinding sabindnew --role=myrole1 --serviceaccount=default:auto
+k describe rolebinding sabindnew
+
+k auth can-i create pod --as=system:serviceaccount:default:auto
+# yes
+k auth can-i get pod    --as=system:serviceaccount:default:auto
+# no          ← create only, exactly as the Role says
+```
+
+**Step 3 — bind a Role to a *User*, then switch context and prove it.** This is the step `basic-k8s` adds that most
+people skip, and it is the one that catches mistakes:
+
+```bash
+k create rolebinding mybind --role=myrole --user=pandey
+k get rolebinding
+k describe rolebinding mybind
+
+k config get-contexts
+k config use-context pandey
+k get pods
+# NAME   READY   STATUS    RESTARTS   AGE
+# pod1   1/1     Running   0          3m        ← the Role works
+
+k get svc
+# NAME   TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+# ...                                  ← also allowed by the Role
+
+k get cm
+# Error from server (Forbidden): configmaps is forbidden: User "pandey" cannot
+# list resource "configmaps" in API group "" in the namespace "default"
+#                                     ← exactly the restriction we wanted
+
+k delete pod pod1
+# Error from server (Forbidden): pods "pod1" is forbidden: User "pandey" cannot
+# delete resource "pods" in API group "" in the namespace "default"
+#                                     ← get/list only, not delete
+
+k get nodes
+# Error from server (Forbidden): nodes is forbidden: User "pandey" cannot
+# list resource "nodes" in API group "" at the cluster scope
+#                                     ← a Role does not reach cluster-scoped resources
+```
+
+**Step 4 — switch back, and re-verify with `--user`:**
+
+```bash
+k config use-context kubernetes-admin@kubernetes
+k config get-contexts
+k get nodes
+
+k auth can-i get cm      --user=pandey      # no
+k auth can-i get pod     --user=pandey      # yes
+k auth can-i create pod  --user=pandey      # no
+k auth can-i create svc  --user=pandey      # no
+k auth can-i get svc     --user=pandey      # yes
+```
+
+**Step 5 — the cluster-scoped version, verified the same way:**
+
+```bash
+k api-resources --namespaced=false
+k get clusterrole
+k describe clusterrole cluster-admin
+
+k create clusterrole myclusterrole --verb=get,list --resource=ns,nodes
+k describe clusterrole myclusterrole
+
+# A common mistake: forgetting the NAME of the binding
+k create clusterrolebinding --clusterrole=myclusterrole --user=pandey
+# error: exactly one NAME is required for clusterrolebinding
+
+k create clusterrolebinding myclsuterbind --clusterrole=myclusterrole --user=pandey
+k describe clusterrolebinding myclsuterbind
+
+k auth can-i get nodes --user=pandey     # yes
+k auth can-i get ns    --user=pandey     # yes
+k auth can-i get sc    --user=pandey     # no
+
+k create clusterrolebinding sabindclusternew --clusterrole=myclusterrole --serviceaccount=default:auto
+k describe clusterrolebinding sabindclusternew
+
+k auth can-i get nodes --as=system:serviceaccount:default:auto   # yes
+k auth can-i get ns    --as=system:serviceaccount:default:auto   # yes
+k auth can-i get sc    --as=system:serviceaccount:default:auto   # no
+```
+
+> **Exam note** — the three verification techniques, in order of how much they prove:
+> `kubectl auth can-i --as=...` (asks the authoriser, no client involved),
+> `kubectl auth can-i --user=...` (same, for users), and
+> **`kubectl config use-context <ctx>` then actually run the command** (the only one that exercises the real kubeconfig,
+> the real client cert and the real transport). If a question says "confirm the user can only read pods", the third
+> technique is what earns the point.
 
 ## 5.4 ClusterRoles and ClusterRoleBindings — Lab `26-cluster-roles.sh`
 
@@ -5576,6 +6724,141 @@ kubectl delete csr agent-mith
 > **Exam note** — the whole flow is: generate key → generate CSR → base64 it → create the CSR object → **approve it** →
 > `kubectl get csr akshay -o jsonpath='{.status.certificate}' | base64 -d > akshay.crt` → put the cert and key into a
 > kubeconfig. Forgetting `kubectl certificate approve` is the classic failure.
+
+### 8a. The full user-certificate flow, end to end — `basic-k8s/basic-labs.txt`
+
+`basic-k8s` runs the whole thing with the two-terminal workflow that makes the copy-paste steps obvious. Two details in
+it are worth calling out because they are easy to get wrong: the `groups:` field, and `--embed-certs`.
+
+```bash
+mkdir -p /root/kube/pandey
+cd /root/kube/pandey
+
+# 1. Generate the private key
+openssl genrsa -out pandey.key 2048
+
+# 2. Generate the CSR. The CN becomes the username; the O entries become the groups.
+openssl req -new -key pandey.key -out pandey.csr
+#   Country Name (2 letter code): IN
+#   State or Province Name: delhi
+#   Common Name: pandey          ← this is the USERNAME
+#   (rest can be skipped)
+
+# 3. Base64 the CSR — one line, no wrapping
+cat pandey.csr | base64 -w 0
+# copy the content to the other tab and paste it in the csr request field
+```
+
+**[Your note]** — the `(rest can be skiped)` annotation. Only `CommonName` matters for a user certificate; the
+organisational fields are ignored by Kubernetes. You *can* add `Organization` entries and they become the user's
+**groups**, which is how you grant permissions to a whole team at once instead of one user at a time.
+
+```yaml
+# csr-pandey.yaml
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: pandey
+spec:
+  groups:
+    - system:authenticated
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ3FEQ0NBWkFDQVFBd1l6
+            RUxNQWtHQTFVRUJoTUNTVTR4RGpBTUJnTlZCQWdNQldSbGJHaHBNUlV3RXdZRApWUVFIREF4
+            ...                          # the one-line base64 from step 3
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+    - client auth
+```
+
+**Two details your version has that the LFS258 lab does not:**
+
+| Field | Why it is there |
+|---|---|
+| `groups: [system:authenticated]` | Puts the issued cert's subject into the `system:authenticated` group. Without it the cert is technically valid but is **not** a member of the authenticated group, so some authorisers and admission plugins will refuse it |
+| `usages: [client auth]` only | The minimal set. The other locations in your repo add `digital signature` and `key encipherment`; both forms are accepted, but `client auth` is the one that must be present |
+
+```bash
+# 4. Create and approve
+k create -f csr-pandey.yaml
+k get csr
+# NAME     AGE   SIGNERNAME                                    REQUESTOR           CONDITION
+# pandey   5s    kubernetes.io/kube-apiserver-client           kubernetes-admin     Pending
+
+k certificate approve pandey
+k get csr
+# NAME     AGE   SIGNERNAME                                    REQUESTOR           CONDITION
+# pandey   8s    kubernetes.io/kube-apiserver-client           kubernetes-admin     Approved,Issued
+
+# 5. Extract the issued certificate
+k get csr pandey -o yaml
+# copy the certificate and open a new tab
+
+echo <paste the certificate> | base64 -d > pandey.crt
+```
+
+**Step 6 — build the kubeconfig, and the `--embed-certs` gotcha:**
+
+```bash
+k config view
+
+# Without --embed-certs, this stores a FILE REFERENCE, not the cert
+k config set-credentials pandey --client-key pandey.key --client-certificate pandey.crt
+k config view
+# users:
+# - name: pandey
+#   user:
+#     client-certificate: /root/kube/pandey/pandey.crt     ← a path
+#     client-key:         /root/kube/pandey/pandey.key      ← a path
+
+# WITH --embed-certs, the PEM is inlined into the kubeconfig
+k config set-credentials pandey \
+  --client-key pandey.key \
+  --client-certificate pandey.crt \
+  --embed-certs
+
+k config view
+# users:
+# - name: pandey
+#   user:
+#     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==...
+#     client-key-data:         LS0tLS1CRUdJTiBSU0EUFERTJBMkF...
+```
+
+**[Your note]** — the two-tab dance, verbatim:
+
+> *copy the certificate and open a new tab*
+> *`echo <pastethe certificate> | base64 -d > pandey.crt`*
+> *switch back tyo previous tab*
+
+The two-terminal workflow exists because the base64 certificate is several kilobytes long and unreadable on one line.
+The alternative that avoids the copy-paste entirely:
+
+```bash
+# Do it in one command — no manual copy
+k get csr pandey -o jsonpath='{.status.certificate}' | base64 -d > pandey.crt
+```
+
+**Step 7 — the context, and the test:**
+
+```bash
+k config get-contexts
+k config set-context pandey --user=pandey --cluster=kubernetes
+k config get-contexts
+k config use-context pandey
+k config get-context
+
+k get pods
+k get svc
+k get cm
+
+k config use-context kubernetes-admin@kubernetes
+k get pods
+```
+
+> **Exam note** — `--embed-certs` is not cosmetic. If you set the credentials without it and then move the kubeconfig to
+> another machine (or run `kubectl` from a different directory), the file references break and you get
+> `unable to read client-cert ... no such file or directory`. The exam's kubeconfig questions almost always want
+> `--embed-certs`, because the resulting file must be self-contained.
 
 ### Signing it yourself (no CSR object)
 
@@ -10246,7 +11529,15 @@ The largest new find — 740 lines of fully worked CKA questions.
 
 ---
 
-## B.19 `my-certificate/`
+## B.19 `basic-k8s/`
+
+| File | Domain | Topic | Covered in |
+|---|---|---|---|
+| `basic-labs.txt` | **all domains** | 1,300+ lines of worked labs: Docker, kubeadm init flags, pods, imagePullPolicy, labels/selectors, ReplicaSets, Services + MetalLB, DaemonSets, namespaces, ResourceQuota, env/ConfigMap/Secrets, rolling update + `change-cause`, Recreate, **blue/green**, emptyDir/hostPath/PV+PVC, RBAC + context switching, user certificates, **ingress-nginx install**, hotel/tea/coffee Ingress, **Helm** | See Appendix C §C.1 for the full per-section landing map. New material: Parts I §1.4, II §2.3a–2.3c/§2.9a, III §3.2a–3.2b, IV §4.2a–4.2b, V §5.3a/§5.8a, Appendix E |
+
+---
+
+## B.20 `my-certificate/`
 
 | File | Domain | Topic | Covered in |
 |---|---|---|---|
@@ -10254,7 +11545,7 @@ The largest new find — 740 lines of fully worked CKA questions.
 
 ---
 
-## B.20 The ten things your repo documents that most candidates get wrong
+## B.21 The ten things your repo documents that most candidates get wrong
 
 These all appear as explicit **[Your note]** comments in your own lab files. They are worth more than any checklist.
 
@@ -10315,185 +11606,171 @@ These all appear as explicit **[Your note]** comments in your own lab files. The
 
 \pagebreak
 
-## Appendix C — Your `basic-k8s` CKA Notes
+## Appendix C — Your `basic-k8s` / `basic labs.txt` CKA Notes
 
-**STATUS: RESERVED — awaiting the `basic-k8s` file.**
+**STATUS: MERGED.** The file arrived (as `basic labs.txt`, on the `main` branch of the repo, after two failed attachment
+attempts). It is 1,300+ lines of worked labs covering Docker, Kubernetes fundamentals, controllers, Services, storage,
+RBAC, certificates, Ingress and Helm — and it turned out to contain a substantial amount of material that the rest of
+the repository did not have.
 
-The `basic-k8s` text file containing your CKA labs was referenced but did not arrive in this workspace. Only the
-LFS258 repository was delivered. Rather than guess at its contents, this appendix is pre-formatted and ready.
+This appendix is the **intake map**: what the file contained, where each lab landed, and what was genuinely new.
 
-> **Good news, though.** While looking for a `lab.txt` file you asked about (there is none anywhere in the workspace),
-> a second, complete survey of the repository turned up **266 non-`.git` files instead of 255** — the first survey had
-> been silently truncated at 200 lines. The files it missed contained a great deal of CKA lab material, and all of it is
-> now merged:
->
-> * `last-try/questions.sh` — **740 lines, 25 fully worked CKA exam questions** (now [Part VII](#part-vii--exam-drills--mock-exams))
-> * `mock-exam-1.sh`, `mock-exam-2.sh`, `mock-exam-3.sh` — three mock exams (Part VII §7.26–7.28)
-> * `last-try/scenarios-ingress.txt` and `last-try/senarisos-np.txt` — 10 scenario questions, worked (Part VII §7.29–7.30)
-> * `lightenin-labs/`, `practice-on-paper/`, `cluster-upgrade/`, `shells/`, `explore-services/`, `troubleshooting/`,
->   `yaml/`, `configmap/` — upgrade sequences, external-etcd drills, real log captures and reference manifests
-> * `kubectl-quick-refrence.sh` and `jsaon-path-examples.sh` — consolidated as
->   [Appendix D](#appendix-d--kubectl-and-jsonpath-quick-reference)
->
-> So most of what `basic-k8s` would have contributed is already covered. If the file adds anything beyond that, this
-> appendix is where it goes.
+A verbatim copy of the source is kept at **`basic-k8s/basic-labs.txt`** in the repository so nothing is lost.
 
 ---
 
-## C.1 How to supply it
+## C.1 Where every section of `basic-k8s/basic-labs.txt` landed
 
-Any one of these works:
-
-1. **Paste the text directly** into the chat. I will transcribe it into this appendix verbatim, preserving your code
-   blocks and comments.
-2. **Drop the file into the repository** — e.g. `MERGED/basic-k8s.txt` or `Labs/basic-k8s.md` — and tell me the path.
-3. **Attach it to a follow-up message** so it lands in the workspace alongside the repo.
-
-Once it is here I will:
-
-* transcribe it into this appendix under a `## C.N <original heading>` structure, unchanged;
-* add a `**CKA domain:**` and `**Merged into:**` line under each lab so it cross-links to Parts I–VII;
-* add any labs it contains that Parts I–VI do not already cover, as new numbered sections in the relevant Part;
-* update the [index](#kubernetes-cka--lfs258--merged-lab--study-guide) row for this appendix;
-* update [Appendix B](#appendix-b--lfs258--cka-crosswalk) with the new file.
-
----
-
-## C.2 The structure each of your labs will be given
-
-So you can see exactly what arrives, here is the template every lab in this document follows — your notes will be folded
-into the same shape so the whole thing reads consistently:
-
-```
-### Lab <N>. <title>
-
-**CKA domain:** <CAIC | Workloads & Scheduling | Services & Networking | Storage | Security | Troubleshooting>
-**Merged into:** Part <X> §<Y>
-**Repo file:** <path, if it also exists in the LFS258 repo>
-**Alternative image:** quay.io/pandeysp/<image>:<tag>
-
-#### Objective
-<one or two sentences on what the task asks for>
-
-#### Commands
-<the exact commands you ran, in order>
-
-#### Manifest
-<the YAML, with the alt-image comment>
-
-#### Explanation
-<why it works, the concept behind it, and the fields that matter>
-
-#### [Your note]
-<your own annotation from the original file, verbatim>
-
-#### Exam notes
-<the gotchas, the traps, the time-savers>
-```
+| # | Section in the file | Landed in | New? |
+|---|---|---|---|
+| 1 | Docker Lab — lifecycle, interactive/detached, port publishing | [Appendix E §E.1](#appendix-e--docker-and-helm-foundations) | **NEW** |
+| 2 | Dockerfile — build, tag, push, login | [Appendix E §E.1.4–E.1.5](#appendix-e--docker-and-helm-foundations) | **NEW** |
+| 3 | K8s Install Ubuntu — `install.sh`, `kubeadm init` flags, `alias k` | [Part I §1.4a](#part-i--cluster-architecture-installation--configuration) | **NEW** flags |
+| 4 | Pods — `k run`, `describe`, `explain`, `curl <pod-IP>` | [Part I §1.4b](#part-i--cluster-architecture-installation--configuration) (`explain`), [Part II §2.1](#part-ii--workloads--scheduling) | `explain` walkthrough **NEW** |
+| 5 | Multi-container pod — `exec -c con2` | Part II §2.4 | covered |
+| 6 | **Image Pull Policy** — Always / IfNotPresent / Never | [Part II §2.3a](#part-ii--workloads--scheduling) | **NEW** |
+| 7 | Labels and Selectors — `--show-labels`, `env in (...)` | [Part II §2.9a](#part-ii--workloads--scheduling) | set-based **NEW** |
+| 8 | Replica Set — create, scale, self-healing | Part II §2.2 | covered |
+| 9 | **Set-based ReplicaSet** — `matchExpressions`, `operator: In` | [Part II §2.9a](#part-ii--workloads--scheduling) | **NEW** |
+| 10 | Services — ClusterIP / NodePort / LoadBalancer | Part III §3.2 | covered |
+| 11 | **MetalLB** — `IPAddressPool`, bare-metal LoadBalancer | [Part III §3.2a](#part-iii--services--networking) | **NEW** |
+| 12 | DaemonSet — `myds`, delete a pod and watch it return | Part II §2.7 | covered |
+| 13 | Namespace — `create ns`, `-n`, `namespace:` in metadata | Part I §1.3 | covered |
+| 14 | ResourceQuota — `dev-quota` with pods/cpu/memory | Part I §1.3, Part II §2.10 | covered |
+| 15 | Environment — plain key / ConfigMap / Secrets, `envFrom` | **Part V §5.6** (`envFrom` forms) | `envFrom` **NEW** |
+| 16 | **`change-cause` annotation** + `rollout history` / `undo` / `--to-revision` | [Part II §2.3b](#part-ii--workloads--scheduling) | **NEW** |
+| 17 | Recreate — `strategy: type: Recreate` | Part II §2.3 | covered |
+| 18 | **Blue/green deployment** — two Deployments, switch the Service | [Part II §2.3c](#part-ii--workloads--scheduling) | **NEW** |
+| 19 | **`emptyDir`** — the on-node `/var/lib/kubelet/pods/...` walkthrough | [Part IV §4.2a](#part-iv--storage) | **NEW** |
+| 20 | HostPath — same walkthrough, data survives the pod | Part IV §4.8 | covered |
+| 21 | **PV/PVC with `volumeName`** — explicit binding, `ReadWriteMany` | [Part IV §4.2b](#part-iv--storage) | **NEW** |
+| 22 | RBAC — Role, RoleBinding, `auth can-i`, cluster-scoped | Part V §5.3–5.4 | covered |
+| 23 | **Proving RBAC by switching context** — `use-context pandey`, run the command | [Part V §5.3a](#part-v--security) | **NEW** |
+| 24 | **User certificate** — `genrsa` → `req` → CSR with `groups:` → approve → `--embed-certs` | [Part V §5.8a](#part-v--security) | **NEW** details |
+| 25 | **Ingress controller install** — MetalLB then ingress-nginx from the repo | [Part III §3.2a–3.2b](#part-iii--services--networking) | **NEW** |
+| 26 | **hotel/tea/coffee** — one Ingress, three paths, `rewrite-target` | **Part III §3.2b** | covered (pattern) |
+| 27 | **Helm** — repo, search, install, list, uninstall | [Appendix E §E.2](#appendix-e--docker-and-helm-foundations) | **NEW** |
 
 ---
 
-## C.3 CKA domains your `basic-k8s` notes most likely cover
+## C.2 The genuinely new material, in one place
 
-Mapping so nothing gets lost when the file arrives. If your notes touch any of these, it lands in the Part shown:
+Ten things from `basic labs.txt` were not anywhere else in the repository, and are now merged:
 
-| Topic in your CKA notes | Lands in |
-|---|---|
-| Cluster components, `kubeadm init/join/upgrade`, HA control plane, etcd | Part I §1.1–1.4, §1.9, §1.11 |
-| CNI plugin install, pod CIDR, `ip`/`iptables`, DNS (CoreDNS) | Part I §1.5, Part III §3.1, §3.8 |
-| Static pods, second scheduler, kubelet config, `staticPodPath` | Part I §1.6, §1.7 |
-| Metrics Server / aggregation layer, `kubectl top` | Part I §1.8 |
-| RBAC — Roles, ClusterRoles, bindings, ServiceAccounts, `auth can-i` | Part V §5.2–5.5 |
-| Certificates, CSR objects, kubeconfig, TLS for components | Part V §5.8, §5.9 |
-| SecurityContext, capabilities, `runAsNonRoot`, Pod Security | Part V §5.7 |
-| Private registries, image pull secrets | Part V §5.6 |
-| NetworkPolicy — ingress, egress, `podSelector`/`namespaceSelector` | Part III §3.4 |
-| Services — ClusterIP, NodePort, LoadBalancer, headless, endpoints | Part III §3.2, §3.3 |
-| Ingress — controller install, host/path routing, TLS, rewrite | Part III §3.5 |
-| PV / PVC / StorageClass / access modes / reclaim policy / CSI | Part IV §4.1–4.7 |
-| Pods, ReplicaSets, Deployments, rollouts, rollbacks, `rollout undo` | Part II §2.1–2.3 |
-| Multi-container pods, sidecar, ambassador, adapter, init containers | Part II §2.4, §2.5 |
-| `command` / `args` / ENTRYPOINT / CMD, Downward API | Part II §2.6 |
-| DaemonSets, StatefulSets, Jobs, CronJobs | Part II §2.7, §2.8 |
-| Labels, selectors, annotations, `--show-labels` | Part II §2.9 |
-| Requests, limits, QoS, LimitRange, ResourceQuota, HPA | Part II §2.10 |
-| Taints, tolerations, node affinity, pod affinity, topologyKey | Part II §2.11 |
-| Probes — liveness, readiness, startup | Part II §2.13 |
-| Node drain/cordon/uncordon, upgrades, cluster maintenance | Part I §1.12, §1.11 |
-| Troubleshooting — pod status, logs, `crictl`, control plane, network | Part VI §6.1–6.11 |
-| **Full worked exam questions, mock exams, Ingress/NetworkPolicy scenarios** | **Part VII §7.1–7.31** |
-| `kubectl` command reference, JSONPath | Appendix D |
+1. **Docker fundamentals and Dockerfiles** — Appendix E §E.1. The repo had no container-runtime material at all, and
+   `Deployments/DockerFile` was the only Dockerfile in it.
+2. **`imagePullPolicy`** — Part II §2.3a. The `:latest` → `Always` default rule, and the `ErrImageNeverPull` vs
+   `ImagePullBackOff` distinction.
+3. **Set-based selectors** — Part II §2.9a. `--selector 'env in (prod,dev)'`, `notin`, `Exists`, `DoesNotExist`, and the
+   same three operators in a ReplicaSet's `matchExpressions`.
+4. **`change-cause` and the revision lifecycle** — Part II §2.3b. `kubectl annotate deploy mydep
+   kubernetes.io/change-cause=...`, `rollout history`, `rollout undo --to-revision=N`.
+5. **Blue/green deployment** — Part II §2.3c. Two Deployments and a Service whose selector discriminates on a
+   `version:` label, with the cutover being a single `kubectl edit svc`.
+6. **MetalLB** — Part III §3.2a. The `IPAddressPool` CRD that makes `LoadBalancer` work on bare metal, and the reason
+   `EXTERNAL-IP` is `<pending>` without it.
+7. **Installing the ingress controller** — Part III §3.2b. MetalLB first, then `ingress-nginx/deploy/static/provider/cloud/deploy.yaml`.
+8. **`emptyDir` on the node** — Part IV §4.2a. The `/var/lib/kubelet/pods/<UID>/volumes/kubernetes.io~empty-dir/<name>/`
+   path, plus the `sizeLimit` and `medium: Memory` answers to your own *"Task: Find a way to define size limit in
+   emptydir type of storage"*.
+9. **`volumeName` explicit binding** — Part IV §4.2b. Pinning a PVC to a specific PV, and using `ReadWriteMany`.
+10. **Proving a permission by using it** — Part V §5.3a. `kubectl config use-context pandey`, then running the command
+    and reading the `Forbidden:` error, which proves far more than `auth can-i`.
+11. **CSR `groups:` and `--embed-certs`** — Part V §5.8a. The `system:authenticated` group, and why the kubeconfig must
+    be self-contained.
 
 ---
 
-## C.4 What is already fully covered without your notes file
+## C.2 The lab-environment facts this file establishes
 
-If your `basic-k8s` notes largely repeat LFS258 ground, you may find this document already covers them. For reference,
-the complete competency list of the current CKA curriculum and where each one is addressed:
+Everything else in this document assumes a kubeadm cluster. `basic labs.txt` pins down the specifics of *yours*:
 
-| # | CKA competency | Covered in |
+| Fact | Value | Where it came from |
 |---|---|---|
-| 1 | Manage RBAC | Part V §5.2–5.5 |
-| 2 | Prepare underlying infrastructure for a cluster install | Part I §1.4 |
-| 3 | Create and manage clusters with kubeadm | Part I §1.4 |
-| 4 | Manage the lifecycle of a cluster | Part I §1.11, §1.12 |
-| 5 | Implement and configure a CNI plugin | Part I §1.5 |
-| 6 | Configure a highly-available control plane | Part I §1.4, §1.9 |
-| 7 | Provision underlying infrastructure | Part I §1.4 |
-| 8 | Perform a version upgrade | Part I §1.11 |
-| 9 | Implement and configure an etcd cluster | Part I §1.9 |
-| 10 | Perform an etcd backup and restore | Part I §1.9 |
-| 11 | Understand deployments and rolling updates / rollbacks | Part II §2.3 |
-| 12 | Use ConfigMaps and Secrets | Part II §2.5, Part V §5.6 |
-| 13 | Scale applications | Part II §2.2, §2.10 |
-| 14 | Primitives for robust, self-healing deployments | Part II §2.2, §2.3, §2.7, §2.8 |
-| 15 | Resource limits and their effect on scheduling | Part II §2.10 |
-| 16 | Manifest management and common tooling | Index §"kubectl patterns", Part III §3.6 |
-| 17 | Configure Pod Admission and Security Context | Part V §5.7 |
-| 18 | Use labels, selectors and annotations | Part II §2.9 |
-| 19 | Configure liveness, readiness, startup probes | Part II §2.13 |
-| 20 | Use the Downward API | Part II §2.6 |
-| 21 | Multi-container pods and init containers | Part II §2.4, §2.5 |
-| 22 | Rolling update / rollback on a Deployment | Part II §2.3 |
-| 23 | Understand NetworkPolicies | Part III §3.4 |
-| 24 | Cluster network / CNI plugin basics | Part I §1.5 |
-| 25 | Networking configuration on cluster nodes | Part III §3.1 |
-| 26 | Connectivity between pods | Part III §3.1 |
-| 27 | Define and enforce Network Policies | Part III §3.4 |
-| 28 | Kubernetes networking model — pod/service network, ClusterIP, NodePort, LoadBalancer, Ingress | Part III §3.1–3.5 |
-| 29 | Ingress rules and controllers | Part III §3.5 |
-| 30 | DNS service for name resolution | Part III §3.1, §3.2, Part VI §6.5 |
-| 31 | Service networking model and kube-proxy | Part III §3.3 |
-| 32 | Storage classes, PVs, PVCs | Part IV §4.1–4.5 |
-| 33 | Container Storage Interface | Part IV §4.7 |
-| 34 | Configure applications with persistent storage | Part IV §4.2, §4.8 |
-| 35 | Volume modes, access modes, reclaim policies | Part IV §4.3, §4.4, §4.6 |
-| 36 | PVCs and how they bind | Part IV §4.1–4.4 |
-| 37 | Authentication and authorisation | Part V §5.1–5.5 |
-| 38 | Kubernetes security primitives | Part V §5.7 |
-| 39 | Network policies (see #23) | Part III §3.4 |
-| 40 | The Kubernetes certificate system | Part V §5.8 |
-| 41 | Configure `kubectl` contexts and switch between them | Part V §5.9 |
-| 42 | Create and manage TLS certificates for cluster components | Part V §5.8 |
-| 43 | Configure a SecurityContext for a pod or container | Part V §5.7 |
-| 44 | Define ServiceAccount permissions | Part V §5.5 |
-| 45 | Create and use ServiceAccounts | Part V §5.5 |
-| 46 | Pull images from a private registry | Part V §5.6 |
-| 47 | Troubleshoot cluster component failure | Part VI §6.3 |
-| 48 | Troubleshoot application failure | Part VI §6.1, §6.2, §6.9 |
-| 49 | Troubleshoot networking issues | Part VI §6.5 |
-| 50 | Troubleshoot storage issues | Part IV §4.5, §4.8, Part VI §6.8 |
-| 51 | Evaluate cluster and node logging | Part VI §6.3, §6.7 |
-| 52 | Monitor applications | Part VI §6.6 |
-| 53 | Manage container stdout and stderr logs | Part VI §6.2 |
-| 54 | Troubleshoot control plane and worker node failure | Part VI §6.3, §6.4 |
-
-**All 54 competencies are addressed in Parts I–VI.** Your `basic-k8s` notes will add *your* wording, *your* commands and
-*your* personal annotations on top of that, which is exactly the value they add over any textbook.
+| Cluster build | `pandeysp1/ubuntu-k8s/install.sh` then a manual `kubeadm init` | §"K8s Install Ubuntu" |
+| Pod CIDR | `10.244.0.0/16` | `--pod-network-cidr` |
+| Service CIDR | `10.96.0.0/16` | `--service-cidr` |
+| kubelet cert paths | `/etc/kubernetes/pki/` | implied by kubeadm |
+| User images | `quay.io/pandeysp/*` | every `image:` line |
+| Lab environment | KillerCoda, with a fixed set of exposed node ports | *"go to killercoda right side → select target port"* |
+| Shell alias | `k` = `kubectl` | `alias k=kubectl` |
+| Pre-flight checks | bypassed with `--ignore-preflight-errors=all` | the init command |
 
 ---
 
-*Send the `basic-k8s` file and this appendix fills in.*
+## C.3 Your notes, preserved verbatim
+
+**[Your note]** — the emptyDir task you set yourself:
+
+> *Task: Find a way to define size limit in emptydir type of storage*
+> *Doc of K8s*
+
+The answer is `emptyDir.sizeLimit`, documented in Part IV §4.2a.
+
+**[Your note]** — on the two-terminal CSR workflow:
+
+> *open a new tab*
+> *`cat pandey.csr | base64 -w 0`*
+> *copy the content to previous tab and paste in csr request field*
+
+**[Your note]** — the same, for extracting the issued certificate:
+
+> *copy the certificate and open a new tab*
+> *`echo <pastethe certificate> | base64 -d > pandey.crt`*
+> *switch back tyo previous tab*
+
+Both are captured, with the single-command alternative that avoids the copy-paste, in Part V §5.8a.
+
+**[Your note]** — on the blue/green cutover:
+
+> *go to version line and change the version from blue to green*
+> *save and exit*
+> *reload the page*
+
+**[Your note]** — on hostPath outliving the pod:
+
+> *even you have delete the pod the files will remian in the node /mnt directory*
+> *and if you spin your pod again and its created in the same node, the files will be present in the container*
+
+**[Your note]** — on the `stagging` label. Your `set-rs.yaml` selects on `app in (dev, stagging)` — a typo for
+`staging`, but it is spelled identically in the selector and in the labels, so the ReplicaSet adopts the pods anyway.
+That is the right lesson: Kubernetes does not care what a label *means*, only that the selector and the labels agree.
+
+**[Your note]** — the typos in your file that are worth naming, because they are exactly what muscle memory gets wrong:
+`docer exec` (missing `k`), `k config viewe`, `k desribe deploy mydep`, `k get ppods`, `k set image i`,
+`--country=IN` (openssl wants `-subj "/C=IN/ST=delhi/CN=pandey"`), `myclsuterbind`, `trainig-web-server`,
+`emphemeral`. Every one of them produces either a command-not-found error or — worse — a silently wrong object.
+Always `cat` a generated manifest before applying it.
+
+---
+
+## C.4 What this file does **not** contain
+
+So you know what to look for elsewhere:
+
+| Missing from `basic labs.txt` | Covered in |
+|---|---|
+| etcd backup/restore | Part I §1.9, Part VII §7.25 |
+| Cluster upgrades | Part I §1.11 |
+| Node lifecycle, drain/cordon | Part I §1.12 |
+| NetworkPolicy | Part III §3.4, Part VII §7.30 |
+| Ingress scenarios (TLS, canary, host routing) | Part VII §7.29 |
+| Probes (liveness/readiness) | Part II §2.8, Part VII §7.4 |
+| StatefulSets, Jobs, CronJobs | Part II §2.7 |
+| Troubleshooting | Part VI, Part VII §7.18–7.19 |
+| Mock exams | Part VII §7.26–7.28 |
+| Static pods | Part I §1.6 |
+| Custom schedulers | Part I §1.7 |
+| Metrics-server | Part I §1.8 |
+
+---
+
+## C.5 If you supply more CKA notes
+
+Any further `basic-k8s` material will be folded in the same way: transcribed verbatim into this appendix, with a
+`**CKA domain:**` and `**Merged into:**` line under each lab, and anything that is genuinely new added as a numbered
+section in the relevant Part. Appendix B's crosswalk is updated with the file, and the single-file deliverable is
+rebuilt and re-validated.
 
 \pagebreak
 
@@ -10925,3 +12202,369 @@ From Part III §3.5, repeated here for convenience. The flag is `--dry-run=clien
 
 Not available as `kubectl create`: `persistentvolume`, `persistentvolumeclaim`, `networkpolicy`, `daemonset`,
 `statefulset`, `replicaset`. Write those as YAML, or generate and strip a Deployment.
+
+\pagebreak
+
+## Appendix E — Docker and Helm Foundations
+
+From `basic-k8s/basic-labs.txt`. Kubernetes does not exist in a vacuum — before the pods there is a container runtime,
+and after the manifests there is a package manager. This appendix covers both, in the order your lab does.
+
+**Everything here uses your own images where the original used a public one.** The policy throughout this document is
+*keep the original, add an alternative* — so the original command is shown first and the `quay.io/pandeysp/*`
+substitution is a commented line directly beneath it.
+
+---
+
+## E.1 Docker Lab — the container primitives
+
+### E.1.1 Container lifecycle
+
+```bash
+docker --help
+docker ps                    # running containers
+docker ps -a                 # all containers, including stopped
+docker images                # local images
+docker version
+docker search redis          # search Docker Hub
+```
+
+**Running and naming:**
+
+```bash
+docker run --name ubuntu                       # named "ubuntu", no image → error
+docker run --name centos-1 ubuntu              # named centos-1, image ubuntu
+docker run --name centos-3 ubuntu /bin/bash    # overrides CMD
+docker run --name centos-5 ubuntu sleep 50     # exits after 50 seconds
+
+docker ps -a
+# CONTAINER ID   IMAGE     COMMAND       STATUS                     PORTS     NAMES
+# a1b2c3d4e5f6   ubuntu    "/bin/bash"   Exited (0) 3 seconds ago             centos-3
+# f6e5d4c3b2a1   ubuntu    "sleep 50"    Exited (0) 51 seconds ago            centos-5
+
+docker rm 1a57e4d20ff0 23d7224aead6            # remove by ID, several at once
+docker rm 1041ce05339d 6bc80fcfbd2f 3b83c473fc0b
+docker ps -a
+```
+
+### E.1.2 Interactive vs detached
+
+| Flag | Effect | Use for |
+|---|---|---|
+| `-i` | keep STDIN open | pipes |
+| `-t` | allocate a pseudo-TTY | a shell |
+| `-d` | **detached** — run in the background | servers |
+| `-it` | interactive TTY | `docker exec ... bash` |
+| `-dit` | detached **and** TTY-allocated | a server you may want to attach to later |
+
+```bash
+docker run -i  --name con1 ubuntu          # stdin open, no TTY
+docker run -it --name con2 ubuntu          # you get a shell
+docker run -dit --name con3 ubuntu         # backgrounded, TTY ready
+
+docer exec -it e399e0e44dee /bin/bash      # ← typo in your file; the correct form is:
+docker exec -it e399e0e44dee /bin/bash     # exec INTO a running container
+```
+
+**[Your note]** — `docer exec` is a typo in the source. Worth naming because `docker exec` (not `run`) is the command
+for entering a container that is already running. The mapping to Kubernetes is exact:
+
+| Docker | Kubernetes |
+|---|---|
+| `docker exec -it <c> bash` | `kubectl exec -it <pod> -- bash` |
+| `docker exec -it <c> -c <name> bash` | `kubectl exec -it <pod> -c <name> -- bash` |
+| `docker logs <c>` | `kubectl logs <pod> -c <name>` |
+
+### E.1.3 Port publishing
+
+```bash
+docker run -dit --name webserver -p 5000:80 nginx
+docker ps -dit -p 5000:80 --name webserver nginx
+docker run -dit -p 5000:80 --name webserver nginx
+# Alt image: quay.io/pandeysp/nginx:latest
+
+docker ps
+# CONTAINER ID   IMAGE   COMMAND                  PORTS                                NAMES
+# 9f8e7d6c5b4a   nginx   "/docker-entrypoint.…"   0.0.0.0:5000->80/tcp                 webserver
+
+curl localhost        # nginx answers on 80 by default inside the container
+curl localhost:80
+curl localhost:5000   # the published port on the host
+```
+
+`-p 5000:80` means **host 5000 → container 80**. In Kubernetes the equivalent is a Service: `port` is the in-cluster
+port, `targetPort` is the container port, and `nodePort` is the host port (Part III §3.2).
+
+```bash
+# Publish to a specific interface, and a specific host port
+docker run -d -p 127.0.0.1:5000:80 nginx
+docker run -d -p 5000:80/udp  nginx
+docker run -d -P nginx                       # publish ALL exposed ports, random host ports
+```
+
+### E.1.4 Writing a Dockerfile
+
+```dockerfile
+# Dockerfile
+FROM ubuntu:16.04
+RUN apt-get update -y
+RUN apt-get install apache2 -y
+COPY index.html /var/www/html/index.html
+EXPOSE 80
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+```
+
+```bash
+echo "<h1>WELCOME to DOCKERFILE</h1>" > index.html
+cat index.html
+
+docker build -t web-custom .
+docker images
+# REPOSITORY    TAG       IMAGE ID       CREATED          SIZE
+# web-custom    latest    c3d4e5f6a7b8   5 seconds ago    214MB
+
+docker run -dit --name demo web-custom
+docker exec demo cat /var/www/html/index.html
+docker ps
+docker run -dit -p 5000:80 --name webserver web-custom
+```
+
+**The instruction set, in the order you will use them:**
+
+| Instruction | What it does | Notes |
+|---|---|---|
+| `FROM` | The base image | must be first |
+| `RUN` | Execute a command at **build** time | each one is a new layer |
+| `COPY` / `ADD` | Copy files from the build context into the image | `ADD` also fetches URLs and untars; prefer `COPY` |
+| `WORKDIR` | Set the working directory for later instructions | creates the dir if missing |
+| `ENV` | Set an environment variable | persists into the running container |
+| `EXPOSE` | **Document** a port | does **not** publish it — metadata only |
+| `CMD` | The default command | overridable at `docker run` |
+| `ENTRYPOINT` | The fixed executable | harder to override; combine with `CMD` for default args |
+| `VOLUME` | Declare a mount point | creates an anonymous volume |
+| `USER` | The user to run as | |
+| `LABEL` | Metadata | |
+
+**`CMD` vs `ENTRYPOINT` — the shell form vs the exec form.** This is the same trap as Kubernetes' `command` vs `args`
+(Part II §2.6):
+
+```dockerfile
+# exec form — PID 1 is the process, signals are delivered, no shell involved
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+
+# shell form — PID 1 is /bin/sh -c "...", signals are NOT delivered to the app
+CMD /usr/sbin/apache2ctl -D FOREGROUND
+```
+
+The exec form (a JSON array) is the correct one for anything that must handle SIGTERM — which is every server, and every
+`CMD` in a production image.
+
+```dockerfile
+# ENTRYPOINT fixed, CMD supplying the default arguments
+ENTRYPOINT ["/usr/sbin/apache2ctl"]
+CMD ["-D", "FOREGROUND"]
+
+# docker run myimage -DFOREGROUND   → replaces the CMD, keeps the ENTRYPOINT
+# docker run --entrypoint /bin/sh    → replaces both
+```
+
+**Layer caching.** Put the least-frequently-changing instructions **first**:
+
+```dockerfile
+FROM ubuntu:16.04
+RUN apt-get update -y                          # changes rarely → cached
+RUN apt-get install -y apache2                 # changes rarely → cached
+COPY index.html /var/www/html/index.html       # changes often → invalidates only this layer
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+```
+
+Putting the `COPY` before the `RUN apt-get install` means every edit to `index.html` re-downloads and re-installs
+apache2.
+
+### E.1.5 Tagging and pushing to your own registry
+
+```bash
+docker login
+docker images
+docker tag web-custom:latest <dockerusername>/us-train:v1
+docker images
+docker push <dockerusername>/us-train:v1
+
+# Pull it back somewhere else
+docker pull <dockerusername>/us-train:v1
+```
+
+**[Your note]** — your own images follow exactly this pattern, which is why every lab in this document can point at
+`quay.io/pandeysp/*`:
+
+```bash
+# Build against your own registry
+docker build -t quay.io/pandeysp/mywebapp:v1 .
+docker push quay.io/pandeysp/mywebapp:v1
+
+# Then in Kubernetes
+k run pod1 --image quay.io/pandeysp/mywebapp
+# Alt image: quay.io/pandeysp/mywebapp:latest
+```
+
+**Signup:** <https://hub.docker.com/> (for Docker Hub) or <https://quay.io/> (for your `quay.io/pandeysp/*` images).
+Appendix A is the full catalog of the images you already have.
+
+> **Exam note** — Docker itself is **not** on the CKA. The exam clusters run containerd, and the only container-runtime
+> commands you need are `crictl` (Part VI §6.3). What *is* worth carrying over from this section is the mental model:
+> `docker run -p 5000:80` → a NodePort Service; `docker exec` → `kubectl exec`; a `Dockerfile`'s `CMD` → a pod spec's
+> `command`.
+
+---
+
+## E.2 Helm — the Kubernetes package manager
+
+Artifact Hub: <https://artifacthub.io/>
+
+```bash
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+helm
+```
+
+### E.2.1 Repositories
+
+```bash
+helm repo list
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo list
+# NAME    URL
+# bitnami https://charts.bitnami.com/bitnami
+
+helm search repo bitnami | grep -i nginx
+# NAME                 CHART VERSION   APP VERSION   DESCRIPTION
+# bitnami/nginx        18.2.4          1.27.2        NGINX Open Source is a web server...
+
+helm repo remove bitnami
+helm repo list
+```
+
+```bash
+# Searching everything on Artifact Hub
+helm search hub nginx
+helm search hub wordpress --max-col-width 80
+
+# Inspecting a chart before installing it
+helm show chart bitnami/nginx
+helm show values bitnami/nginx
+helm show values bitnami/nginx | grep -A3 service
+helm pull bitnami/nginx --untar --untardir /tmp/charts
+```
+
+### E.2.2 The install / list / uninstall lifecycle
+
+```bash
+helm install trainig-web-server bitnami/nginx
+# NAME: trainig-web-server
+# LAST DEPLOYED: ...
+# NAMESPACE: default
+# STATUS: deployed
+# REVISION: 1
+
+k get pods,svc
+# NAME                                          READY   STATUS    RESTARTS   AGE
+# pod/trainig-web-server-nginx-xxxxx            1/1     Running   0          40s
+#
+# NAME                            TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)
+# service/trainig-web-server-nginx   LoadBalancer   10.100.20.30   <pending>     80:31234/TCP
+
+curl 10.111.38.74
+```
+
+**[Your note]** — `trainig-web-server` (missing an `i`) is the release name in your lab, and it works fine. Release
+names are arbitrary strings; only their uniqueness within a namespace matters.
+
+```bash
+helm list -a
+# NAME                   NAMESPACE   REVISION   STATUS   CHART         APP VERSION
+# trainig-web-server     default     1          deployed nginx-18.2.4  1.27.2
+
+helm uninstall trainig-web-server
+helm list -a
+k get pods,svc                    # everything the release created is gone
+```
+
+```bash
+# Re-adding and reinstalling
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install trainig-web-server bitnami/nginx
+ls -ltrh
+helm list -a
+```
+
+### E.2.3 The commands that matter
+
+```bash
+helm install <release> <chart>                       # create
+helm install <release> <chart> -n <ns> --create-namespace
+helm install <release> <chart> -f values.yaml        # override defaults
+helm install <release> <chart> --set service.type=NodePort --set replicaCount=3
+helm install <release> <chart> --dry-run --debug      # render without installing
+helm template <release> <chart>                       # render to stdout — no cluster needed
+
+helm list -a                                          # all releases, all namespaces
+helm list -a -n <ns>
+helm status <release>
+helm history <release>
+helm get values <release>
+helm get manifest <release>                           # the rendered manifests
+helm get notes <release>
+
+helm upgrade <release> <chart>
+helm upgrade <release> <chart> -f values.yaml
+helm rollback <release> <revision>
+helm rollback <release> 1
+
+helm uninstall <release>
+helm uninstall <release> --keep-history
+helm repo update
+```
+
+**What Helm actually produces.** A chart is templated YAML. The rendered output is exactly the manifests you would write
+by hand:
+
+```bash
+helm template trainig-web-server bitnami/nginx | head -60
+helm template trainig-web-server bitnami/nginx --set service.type=NodePort > nginx.yaml
+kubectl apply -f nginx.yaml
+```
+
+```bash
+# The values file is the interface
+cat > values.yaml <<'EOF'
+service:
+  type: NodePort
+  nodePort: 30080
+replicaCount: 3
+image:
+  registry: quay.io
+  repository: pandeysp/nginx
+  tag: latest
+EOF
+
+helm install my-nginx bitnami/nginx -f values.yaml
+k get svc
+```
+
+> **Exam note** — Helm is **not** on the CKA syllabus. It appears in LFS258 and in real clusters, and it is worth
+> knowing that `helm template` is a fast way to generate correct manifests for an object you would otherwise write by
+> hand. Do not spend exam-prep time here; spend it on Part VII.
+
+---
+
+## E.3 Part E self-check
+
+1. `docker run -dit -p 5000:80 nginx` — which port is the host's, and which is the container's?
+2. `EXPOSE 80` in a Dockerfile — does it publish the port?
+3. Why is the exec form of `CMD` preferred over the shell form?
+4. `docker exec -it <id> bash` fails with "container is not running". What does `docker ps -a` show?
+5. `helm list -a` returns nothing but you installed a release a minute ago. What namespace is it in?
+6. What does `helm template` do that `helm install --dry-run` does not?
+7. You `docker tag web-custom:latest quay.io/pandeysp/mywebapp:v1` but forget to push. Does Kubernetes see the new tag?
+8. Which Docker command maps to `kubectl logs -c <container>`?

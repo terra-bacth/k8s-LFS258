@@ -291,6 +291,161 @@ kubectl create rolebinding read-pods --clusterrole=view --serviceaccount=default
 
 ---
 
+### 3a. Proving a permission by actually using it
+
+`basic-k8s` does not stop at `kubectl auth can-i`. It creates a **context for the new user** and switches to it, which is
+the only way to demonstrate a permission the way the exam grades it.
+
+**Step 1 — a Role, bound to a ServiceAccount, verified with `--as`:**
+
+```bash
+k api-resources
+k api-resources --namespaced=true
+k api-resources --namespaced=false
+
+k get roles
+k create role myrole --verb=get,list --resource=pod,svc
+k get roles
+k describe role myrole
+# Name:         myrole
+# Labels:       <none>
+# Annotations:  <none>
+# PolicyRule:
+#   Resources  Non-Resource URLs  Resource Names  Verbs
+#   ---------  -----------------  --------------  -----
+#   pods       []                 []              [get list]
+#   svc        []                 []              [get list]
+
+k run pod1 --image quay.io/pandeysp/nginxdemo
+k describe pod pod1
+
+k create rolebinding sabind --role=myrole --serviceaccount=default:default
+k get rolebinding sabind
+k describe role myrole
+k describe rolebinding sabind
+
+# Verify WITHOUT switching
+k auth can-i get cm  --as=system:serviceaccount:default:default
+# no
+k auth can-i get pod --as=system:serviceaccount:default:default
+# yes
+k auth can-i get pv  --as=system:serviceaccount:default:default
+# no
+k auth can-i create pod --as=system:serviceaccount:default:default
+# no
+```
+
+Note the two negative results and why they are correct:
+
+* `get cm` → **no**, because the Role only lists `pod,svc`
+* `get pv` → **no**, because a Role is **namespaced** and `persistentvolumes` is cluster-scoped
+
+**Step 2 — a second ServiceAccount, with a different Role, to show the bindings are independent:**
+
+```bash
+k get sa
+k describe sa default
+k create sa auto
+k get sa
+# NAME      SECRETS   AGE
+# auto      0         2s
+# default   0         22d
+
+k create role myrole1 --verb=create --resource=pod,rs
+k get roles
+k create rolebinding sabindnew --role=myrole1 --serviceaccount=default:auto
+k describe rolebinding sabindnew
+
+k auth can-i create pod --as=system:serviceaccount:default:auto
+# yes
+k auth can-i get pod    --as=system:serviceaccount:default:auto
+# no          ← create only, exactly as the Role says
+```
+
+**Step 3 — bind a Role to a *User*, then switch context and prove it.** This is the step `basic-k8s` adds that most
+people skip, and it is the one that catches mistakes:
+
+```bash
+k create rolebinding mybind --role=myrole --user=pandey
+k get rolebinding
+k describe rolebinding mybind
+
+k config get-contexts
+k config use-context pandey
+k get pods
+# NAME   READY   STATUS    RESTARTS   AGE
+# pod1   1/1     Running   0          3m        ← the Role works
+
+k get svc
+# NAME   TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+# ...                                  ← also allowed by the Role
+
+k get cm
+# Error from server (Forbidden): configmaps is forbidden: User "pandey" cannot
+# list resource "configmaps" in API group "" in the namespace "default"
+#                                     ← exactly the restriction we wanted
+
+k delete pod pod1
+# Error from server (Forbidden): pods "pod1" is forbidden: User "pandey" cannot
+# delete resource "pods" in API group "" in the namespace "default"
+#                                     ← get/list only, not delete
+
+k get nodes
+# Error from server (Forbidden): nodes is forbidden: User "pandey" cannot
+# list resource "nodes" in API group "" at the cluster scope
+#                                     ← a Role does not reach cluster-scoped resources
+```
+
+**Step 4 — switch back, and re-verify with `--user`:**
+
+```bash
+k config use-context kubernetes-admin@kubernetes
+k config get-contexts
+k get nodes
+
+k auth can-i get cm      --user=pandey      # no
+k auth can-i get pod     --user=pandey      # yes
+k auth can-i create pod  --user=pandey      # no
+k auth can-i create svc  --user=pandey      # no
+k auth can-i get svc     --user=pandey      # yes
+```
+
+**Step 5 — the cluster-scoped version, verified the same way:**
+
+```bash
+k api-resources --namespaced=false
+k get clusterrole
+k describe clusterrole cluster-admin
+
+k create clusterrole myclusterrole --verb=get,list --resource=ns,nodes
+k describe clusterrole myclusterrole
+
+# A common mistake: forgetting the NAME of the binding
+k create clusterrolebinding --clusterrole=myclusterrole --user=pandey
+# error: exactly one NAME is required for clusterrolebinding
+
+k create clusterrolebinding myclsuterbind --clusterrole=myclusterrole --user=pandey
+k describe clusterrolebinding myclsuterbind
+
+k auth can-i get nodes --user=pandey     # yes
+k auth can-i get ns    --user=pandey     # yes
+k auth can-i get sc    --user=pandey     # no
+
+k create clusterrolebinding sabindclusternew --clusterrole=myclusterrole --serviceaccount=default:auto
+k describe clusterrolebinding sabindclusternew
+
+k auth can-i get nodes --as=system:serviceaccount:default:auto   # yes
+k auth can-i get ns    --as=system:serviceaccount:default:auto   # yes
+k auth can-i get sc    --as=system:serviceaccount:default:auto   # no
+```
+
+> **Exam note** — the three verification techniques, in order of how much they prove:
+> `kubectl auth can-i --as=...` (asks the authoriser, no client involved),
+> `kubectl auth can-i --user=...` (same, for users), and
+> **`kubectl config use-context <ctx>` then actually run the command** (the only one that exercises the real kubeconfig,
+> the real client cert and the real transport). If a question says "confirm the user can only read pods", the third
+> technique is what earns the point.
+
 ## 5.4 ClusterRoles and ClusterRoleBindings — Lab `26-cluster-roles.sh`
 
 ```bash
@@ -1034,6 +1189,141 @@ kubectl delete csr agent-mith
 > **Exam note** — the whole flow is: generate key → generate CSR → base64 it → create the CSR object → **approve it** →
 > `kubectl get csr akshay -o jsonpath='{.status.certificate}' | base64 -d > akshay.crt` → put the cert and key into a
 > kubeconfig. Forgetting `kubectl certificate approve` is the classic failure.
+
+### 8a. The full user-certificate flow, end to end — `basic-k8s/basic-labs.txt`
+
+`basic-k8s` runs the whole thing with the two-terminal workflow that makes the copy-paste steps obvious. Two details in
+it are worth calling out because they are easy to get wrong: the `groups:` field, and `--embed-certs`.
+
+```bash
+mkdir -p /root/kube/pandey
+cd /root/kube/pandey
+
+# 1. Generate the private key
+openssl genrsa -out pandey.key 2048
+
+# 2. Generate the CSR. The CN becomes the username; the O entries become the groups.
+openssl req -new -key pandey.key -out pandey.csr
+#   Country Name (2 letter code): IN
+#   State or Province Name: delhi
+#   Common Name: pandey          ← this is the USERNAME
+#   (rest can be skipped)
+
+# 3. Base64 the CSR — one line, no wrapping
+cat pandey.csr | base64 -w 0
+# copy the content to the other tab and paste it in the csr request field
+```
+
+**[Your note]** — the `(rest can be skiped)` annotation. Only `CommonName` matters for a user certificate; the
+organisational fields are ignored by Kubernetes. You *can* add `Organization` entries and they become the user's
+**groups**, which is how you grant permissions to a whole team at once instead of one user at a time.
+
+```yaml
+# csr-pandey.yaml
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: pandey
+spec:
+  groups:
+    - system:authenticated
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ3FEQ0NBWkFDQVFBd1l6
+            RUxNQWtHQTFVRUJoTUNTVTR4RGpBTUJnTlZCQWdNQldSbGJHaHBNUlV3RXdZRApWUVFIREF4
+            ...                          # the one-line base64 from step 3
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+    - client auth
+```
+
+**Two details your version has that the LFS258 lab does not:**
+
+| Field | Why it is there |
+|---|---|
+| `groups: [system:authenticated]` | Puts the issued cert's subject into the `system:authenticated` group. Without it the cert is technically valid but is **not** a member of the authenticated group, so some authorisers and admission plugins will refuse it |
+| `usages: [client auth]` only | The minimal set. The other locations in your repo add `digital signature` and `key encipherment`; both forms are accepted, but `client auth` is the one that must be present |
+
+```bash
+# 4. Create and approve
+k create -f csr-pandey.yaml
+k get csr
+# NAME     AGE   SIGNERNAME                                    REQUESTOR           CONDITION
+# pandey   5s    kubernetes.io/kube-apiserver-client           kubernetes-admin     Pending
+
+k certificate approve pandey
+k get csr
+# NAME     AGE   SIGNERNAME                                    REQUESTOR           CONDITION
+# pandey   8s    kubernetes.io/kube-apiserver-client           kubernetes-admin     Approved,Issued
+
+# 5. Extract the issued certificate
+k get csr pandey -o yaml
+# copy the certificate and open a new tab
+
+echo <paste the certificate> | base64 -d > pandey.crt
+```
+
+**Step 6 — build the kubeconfig, and the `--embed-certs` gotcha:**
+
+```bash
+k config view
+
+# Without --embed-certs, this stores a FILE REFERENCE, not the cert
+k config set-credentials pandey --client-key pandey.key --client-certificate pandey.crt
+k config view
+# users:
+# - name: pandey
+#   user:
+#     client-certificate: /root/kube/pandey/pandey.crt     ← a path
+#     client-key:         /root/kube/pandey/pandey.key      ← a path
+
+# WITH --embed-certs, the PEM is inlined into the kubeconfig
+k config set-credentials pandey \
+  --client-key pandey.key \
+  --client-certificate pandey.crt \
+  --embed-certs
+
+k config view
+# users:
+# - name: pandey
+#   user:
+#     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==...
+#     client-key-data:         LS0tLS1CRUdJTiBSU0EUFERTJBMkF...
+```
+
+**[Your note]** — the two-tab dance, verbatim:
+
+> *copy the certificate and open a new tab*
+> *`echo <pastethe certificate> | base64 -d > pandey.crt`*
+> *switch back tyo previous tab*
+
+The two-terminal workflow exists because the base64 certificate is several kilobytes long and unreadable on one line.
+The alternative that avoids the copy-paste entirely:
+
+```bash
+# Do it in one command — no manual copy
+k get csr pandey -o jsonpath='{.status.certificate}' | base64 -d > pandey.crt
+```
+
+**Step 7 — the context, and the test:**
+
+```bash
+k config get-contexts
+k config set-context pandey --user=pandey --cluster=kubernetes
+k config get-contexts
+k config use-context pandey
+k config get-context
+
+k get pods
+k get svc
+k get cm
+
+k config use-context kubernetes-admin@kubernetes
+k get pods
+```
+
+> **Exam note** — `--embed-certs` is not cosmetic. If you set the credentials without it and then move the kubeconfig to
+> another machine (or run `kubectl` from a different directory), the file references break and you get
+> `unable to read client-cert ... no such file or directory`. The exam's kubeconfig questions almost always want
+> `--embed-certs`, because the resulting file must be self-contained.
 
 ### Signing it yourself (no CSR object)
 
