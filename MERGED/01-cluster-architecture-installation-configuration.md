@@ -272,7 +272,7 @@ kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/
 
 ### 4a. The `kubeadm init` flags your `basic-k8s` lab used
 
-`basic-k8s/basic-labs.txt` builds its cluster with the `pandeysp1/ubuntu-k8s` installer script and then runs
+`basic labs.txt` builds its cluster with the `pandeysp1/ubuntu-k8s` installer script and then runs
 `kubeadm init` by hand. The exact invocation, with every flag explained:
 
 ```bash

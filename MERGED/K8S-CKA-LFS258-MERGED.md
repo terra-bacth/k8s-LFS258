@@ -11,7 +11,7 @@
 | `mock-exam-1/2/3.sh`, `lightenin-labs/`, `practice-on-paper/`, `shells/`, `explore-services/`, `troubleshooting/`, `cluster-upgrade/`, `yaml/`, `configmap/` | Three mock exams, cluster-upgrade sequences, external-etcd drills, real troubleshooting logs, and reference manifest sets |
 | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | Your own `kubectl` and JSONPath cheat sheets — consolidated into Appendix D |
 | `last-try/scenarios-ingress.txt`, `last-try/senarisos-np.txt` | 5 Ingress and 5 NetworkPolicy scenario questions — worked in Part VII §7.29–7.30 |
-| `basic-k8s/basic-labs.txt` (1,300+ lines) | **Your CKA `basic-k8s` notes, now merged** — Docker, kubeadm init flags, `imagePullPolicy`, set-based selectors, `change-cause`, blue/green, MetalLB, ingress-nginx install, `volumeName`, RBAC-by-context-switching, Helm. See **Appendix C** for the intake map and **Appendix E** for Docker + Helm |
+| `basic labs.txt` (1,555 lines) | **Your CKA `basic-k8s` notes, now merged** — Docker, kubeadm init flags, `imagePullPolicy`, set-based selectors, `change-cause`, blue/green, MetalLB, ingress-nginx install, `volumeName`, RBAC-by-context-switching, Helm. See **Appendix C** for the intake map and **Appendix E** for Docker + Helm |
 
 **How to use it**
 
@@ -56,7 +56,7 @@
 | [Appendix B](#appendix-b--lfs258--cka-crosswalk) | Repo file → exam objective mapping | — | all 266 files |
 | [Appendix C](#appendix-c--your-basic-k8s--basic-labstxt-cka-notes) | Intake map for your `basic-k8s` / `basic labs.txt` | — | 27 sections mapped; 11 new topics merged |
 | [Appendix D](#appendix-d--kubectl-and-jsonpath-quick-reference) | `kubectl` + JSONPath quick reference | — | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` |
-| [Appendix E](#appendix-e--docker-and-helm-foundations) | Docker and Helm foundations | — | `basic-k8s/basic-labs.txt` |
+| [Appendix E](#appendix-e--docker-and-helm-foundations) | Docker and Helm foundations | — | `basic labs.txt` |
 
 ---
 
@@ -156,7 +156,7 @@ truncated. All of it is now merged:
 
 ## About your `basic-k8s` / `basic labs.txt` notes
 
-Both arrived, and they are the same file. It is preserved verbatim at **`basic-k8s/basic-labs.txt`** in the repository.
+Both arrived, and they are the same file. It is preserved verbatim at **`basic labs.txt`** in the repository root.
 
 It turned out to contain a good deal the rest of the repo did not — **eleven new topics**, including Docker and Helm
 (neither of which appeared anywhere else), `imagePullPolicy`, set-based selectors, the `change-cause` annotation,
@@ -451,7 +451,7 @@ kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/
 
 ### 4a. The `kubeadm init` flags your `basic-k8s` lab used
 
-`basic-k8s/basic-labs.txt` builds its cluster with the `pandeysp1/ubuntu-k8s` installer script and then runs
+`basic labs.txt` builds its cluster with the `pandeysp1/ubuntu-k8s` installer script and then runs
 `kubeadm init` by hand. The exact invocation, with every flag explained:
 
 ```bash
@@ -2939,7 +2939,7 @@ k get pods --selector 'env in ()'                # matches nothing
 **The same three operators exist in a ReplicaSet selector**, via `matchExpressions`:
 
 ```yaml
-# basic-k8s/set-rs.yaml — a set-based ReplicaSet selector
+# set-rs.yaml — a set-based ReplicaSet selector
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
@@ -6725,7 +6725,7 @@ kubectl delete csr agent-mith
 > `kubectl get csr akshay -o jsonpath='{.status.certificate}' | base64 -d > akshay.crt` → put the cert and key into a
 > kubeconfig. Forgetting `kubectl certificate approve` is the classic failure.
 
-### 8a. The full user-certificate flow, end to end — `basic-k8s/basic-labs.txt`
+### 8a. The full user-certificate flow, end to end — `basic labs.txt`
 
 `basic-k8s` runs the whole thing with the two-terminal workflow that makes the copy-paste steps obvious. Two details in
 it are worth calling out because they are easy to get wrong: the `groups:` field, and `--embed-certs`.
@@ -11529,7 +11529,7 @@ The largest new find — 740 lines of fully worked CKA questions.
 
 ---
 
-## B.19 `basic-k8s/`
+## B.19 `basic labs.txt`
 
 | File | Domain | Topic | Covered in |
 |---|---|---|---|
@@ -11609,17 +11609,18 @@ These all appear as explicit **[Your note]** comments in your own lab files. The
 ## Appendix C — Your `basic-k8s` / `basic labs.txt` CKA Notes
 
 **STATUS: MERGED.** The file arrived (as `basic labs.txt`, on the `main` branch of the repo, after two failed attachment
-attempts). It is 1,300+ lines of worked labs covering Docker, Kubernetes fundamentals, controllers, Services, storage,
+attempts). It is 1,555 lines of worked labs covering Docker, Kubernetes fundamentals, controllers, Services, storage,
 RBAC, certificates, Ingress and Helm — and it turned out to contain a substantial amount of material that the rest of
 the repository did not have.
 
 This appendix is the **intake map**: what the file contained, where each lab landed, and what was genuinely new.
 
-A verbatim copy of the source is kept at **`basic-k8s/basic-labs.txt`** in the repository so nothing is lost.
+The source file itself lives at **`basic labs.txt`** in the repository root, byte-for-byte as you uploaded it
+(CRLF line endings and all), so nothing is lost or rewritten.
 
 ---
 
-## C.1 Where every section of `basic-k8s/basic-labs.txt` landed
+## C.1 Where every section of `basic labs.txt` landed
 
 | # | Section in the file | Landed in | New? |
 |---|---|---|---|
@@ -12207,7 +12208,7 @@ Not available as `kubectl create`: `persistentvolume`, `persistentvolumeclaim`, 
 
 ## Appendix E — Docker and Helm Foundations
 
-From `basic-k8s/basic-labs.txt`. Kubernetes does not exist in a vacuum — before the pods there is a container runtime,
+From `basic labs.txt`. Kubernetes does not exist in a vacuum — before the pods there is a container runtime,
 and after the manifests there is a package manager. This appendix covers both, in the order your lab does.
 
 **Everything here uses your own images where the original used a public one.** The policy throughout this document is

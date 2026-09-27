@@ -1190,7 +1190,7 @@ kubectl delete csr agent-mith
 > `kubectl get csr akshay -o jsonpath='{.status.certificate}' | base64 -d > akshay.crt` → put the cert and key into a
 > kubeconfig. Forgetting `kubectl certificate approve` is the classic failure.
 
-### 8a. The full user-certificate flow, end to end — `basic-k8s/basic-labs.txt`
+### 8a. The full user-certificate flow, end to end — `basic labs.txt`
 
 `basic-k8s` runs the whole thing with the two-terminal workflow that makes the copy-paste steps obvious. Two details in
 it are worth calling out because they are easy to get wrong: the `groups:` field, and `--embed-certs`.

@@ -1,6 +1,6 @@
 # Appendix E — Docker and Helm Foundations
 
-From `basic-k8s/basic-labs.txt`. Kubernetes does not exist in a vacuum — before the pods there is a container runtime,
+From `basic labs.txt`. Kubernetes does not exist in a vacuum — before the pods there is a container runtime,
 and after the manifests there is a package manager. This appendix covers both, in the order your lab does.
 
 **Everything here uses your own images where the original used a public one.** The policy throughout this document is

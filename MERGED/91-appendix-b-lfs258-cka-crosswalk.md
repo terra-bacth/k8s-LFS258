@@ -339,7 +339,7 @@ The largest new find — 740 lines of fully worked CKA questions.
 
 ---
 
-## B.19 `basic-k8s/`
+## B.19 `basic labs.txt`
 
 | File | Domain | Topic | Covered in |
 |---|---|---|---|

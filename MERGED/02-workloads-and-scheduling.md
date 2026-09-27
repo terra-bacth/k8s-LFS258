@@ -1376,7 +1376,7 @@ k get pods --selector 'env in ()'                # matches nothing
 **The same three operators exist in a ReplicaSet selector**, via `matchExpressions`:
 
 ```yaml
-# basic-k8s/set-rs.yaml — a set-based ReplicaSet selector
+# set-rs.yaml — a set-based ReplicaSet selector
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:

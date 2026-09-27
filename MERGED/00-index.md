@@ -11,7 +11,7 @@
 | `mock-exam-1/2/3.sh`, `lightenin-labs/`, `practice-on-paper/`, `shells/`, `explore-services/`, `troubleshooting/`, `cluster-upgrade/`, `yaml/`, `configmap/` | Three mock exams, cluster-upgrade sequences, external-etcd drills, real troubleshooting logs, and reference manifest sets |
 | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` | Your own `kubectl` and JSONPath cheat sheets — consolidated into Appendix D |
 | `last-try/scenarios-ingress.txt`, `last-try/senarisos-np.txt` | 5 Ingress and 5 NetworkPolicy scenario questions — worked in Part VII §7.29–7.30 |
-| `basic-k8s/basic-labs.txt` (1,300+ lines) | **Your CKA `basic-k8s` notes, now merged** — Docker, kubeadm init flags, `imagePullPolicy`, set-based selectors, `change-cause`, blue/green, MetalLB, ingress-nginx install, `volumeName`, RBAC-by-context-switching, Helm. See **Appendix C** for the intake map and **Appendix E** for Docker + Helm |
+| `basic labs.txt` (1,555 lines) | **Your CKA `basic-k8s` notes, now merged** — Docker, kubeadm init flags, `imagePullPolicy`, set-based selectors, `change-cause`, blue/green, MetalLB, ingress-nginx install, `volumeName`, RBAC-by-context-switching, Helm. See **Appendix C** for the intake map and **Appendix E** for Docker + Helm |
 
 **How to use it**
 
@@ -56,7 +56,7 @@
 | [Appendix B](91-appendix-b-lfs258-cka-crosswalk.md) | Repo file → exam objective mapping | — | all 266 files |
 | [Appendix C](92-appendix-c-cka-notes.md) | Intake map for your `basic-k8s` / `basic labs.txt` | — | 27 sections mapped; 11 new topics merged |
 | [Appendix D](93-appendix-d-kubectl-jsonpath-reference.md) | `kubectl` + JSONPath quick reference | — | `kubectl-quick-refrence.sh`, `jsaon-path-examples.sh` |
-| [Appendix E](94-appendix-e-docker-and-helm.md) | Docker and Helm foundations | — | `basic-k8s/basic-labs.txt` |
+| [Appendix E](94-appendix-e-docker-and-helm.md) | Docker and Helm foundations | — | `basic labs.txt` |
 
 ---
 
@@ -156,7 +156,7 @@ truncated. All of it is now merged:
 
 ## About your `basic-k8s` / `basic labs.txt` notes
 
-Both arrived, and they are the same file. It is preserved verbatim at **`basic-k8s/basic-labs.txt`** in the repository.
+Both arrived, and they are the same file. It is preserved verbatim at **`basic labs.txt`** in the repository root.
 
 It turned out to contain a good deal the rest of the repo did not — **eleven new topics**, including Docker and Helm
 (neither of which appeared anywhere else), `imagePullPolicy`, set-based selectors, the `change-cause` annotation,

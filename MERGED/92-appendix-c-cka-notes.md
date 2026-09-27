@@ -1,17 +1,18 @@
 # Appendix C — Your `basic-k8s` / `basic labs.txt` CKA Notes
 
 **STATUS: MERGED.** The file arrived (as `basic labs.txt`, on the `main` branch of the repo, after two failed attachment
-attempts). It is 1,300+ lines of worked labs covering Docker, Kubernetes fundamentals, controllers, Services, storage,
+attempts). It is 1,555 lines of worked labs covering Docker, Kubernetes fundamentals, controllers, Services, storage,
 RBAC, certificates, Ingress and Helm — and it turned out to contain a substantial amount of material that the rest of
 the repository did not have.
 
 This appendix is the **intake map**: what the file contained, where each lab landed, and what was genuinely new.
 
-A verbatim copy of the source is kept at **`basic-k8s/basic-labs.txt`** in the repository so nothing is lost.
+The source file itself lives at **`basic labs.txt`** in the repository root, byte-for-byte as you uploaded it
+(CRLF line endings and all), so nothing is lost or rewritten.
 
 ---
 
-## C.1 Where every section of `basic-k8s/basic-labs.txt` landed
+## C.1 Where every section of `basic labs.txt` landed
 
 | # | Section in the file | Landed in | New? |
 |---|---|---|---|
